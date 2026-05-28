@@ -1,0 +1,1675 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f4f5f7;color:#1a1a2e;font-size:13px}
+:root{--blue:#1e3a8a;--blue-l:#dbeafe;--blue-m:#3b82f6;--green:#065f46;--green-l:#d1fae5;--green-m:#10b981;--amber:#92400e;--amber-l:#fef3c7;--amber-m:#f59e0b;--red:#7f1d1d;--red-l:#fee2e2;--red-m:#ef4444;--gray:#374151;--gray-l:#f9fafb;--gray-m:#9ca3af;--border:#e5e7eb;--shadow:0 1px 3px rgba(0,0,0,.08)}
+.hdr{background:var(--blue);color:#fff;padding:14px 22px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px}
+.hdr h1{font-size:15px;font-weight:600}.hdr p{font-size:11px;opacity:.7;margin-top:1px}
+.badge{background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.3);border-radius:20px;padding:3px 11px;font-size:11px;font-weight:500}
+.nav{background:#fff;border-bottom:1px solid var(--border);display:flex;padding:0 22px;overflow-x:auto}
+.tab{padding:10px 14px;font-size:12px;font-weight:500;cursor:pointer;border-bottom:2px solid transparent;color:var(--gray-m);white-space:nowrap;transition:all .2s}
+.tab.active{color:var(--blue);border-bottom-color:var(--blue-m)}
+.tab:hover:not(.active){color:var(--gray)}
+.tab.disabled{opacity:.35;pointer-events:none}
+.content{padding:18px 22px;max-width:1500px;margin:0 auto}
+.section{display:none}.section.active{display:block}
+.info-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px;margin-bottom:18px}
+.info-card{background:#fff;border:1px solid var(--border);border-radius:8px;padding:12px 14px}
+.info-card label{font-size:10px;color:var(--gray-m);display:block;margin-bottom:4px;text-transform:uppercase;letter-spacing:.4px;font-weight:600}
+.info-card input,.info-card select{width:100%;border:1px solid var(--border);border-radius:5px;padding:5px 8px;font-size:12px;color:var(--gray);background:#fff;outline:none}
+.fec-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:18px}
+@media(max-width:650px){.fec-grid{grid-template-columns:1fr}}
+.fec-card{background:#fff;border:1.5px dashed var(--border);border-radius:10px;padding:18px;text-align:center;cursor:pointer;transition:all .2s;position:relative}
+.fec-card:hover{border-color:var(--blue-m);background:var(--blue-l)}
+.fec-card.loaded{border-style:solid;border-color:var(--green-m);background:var(--green-l);cursor:default}
+.fec-year{font-size:13px;font-weight:700;color:var(--blue);margin-bottom:5px}
+.fec-status{font-size:11px;color:var(--gray-m);margin-top:3px}
+.fec-card.loaded .fec-status{color:var(--green)}
+.fec-icon{font-size:26px;margin-bottom:6px}
+.fec-input{display:none}
+.fec-remove{position:absolute;top:7px;right:7px;background:var(--red-l);color:var(--red);border:none;border-radius:50%;width:18px;height:18px;font-size:11px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-weight:700}
+.btn-primary{background:var(--blue);color:#fff;border:none;padding:10px 24px;border-radius:7px;font-size:13px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:7px}
+.btn-primary:hover{background:#1e40af}
+.btn-primary:disabled{opacity:.4;cursor:not-allowed}
+.btn-demo{background:#fff;color:var(--blue);border:1.5px solid var(--blue-m);padding:10px 20px;border-radius:7px;font-size:12px;font-weight:500;cursor:pointer}
+.btn-demo:hover{background:var(--blue-l)}
+.btn-center{display:flex;gap:10px;justify-content:center;align-items:center;margin-top:10px;flex-wrap:wrap}
+.parse-log{background:#1e293b;color:#94a3b8;border-radius:7px;padding:10px 14px;font-size:11px;font-family:monospace;max-height:120px;overflow-y:auto;margin-top:10px;display:none}
+.parse-log .ok{color:#34d399}.parse-log .warn{color:#f59e0b}.parse-log .err{color:#f87171}
+.panel{background:#fff;border-radius:9px;border:1px solid var(--border);margin-bottom:14px;overflow:hidden;box-shadow:var(--shadow)}
+.panel-hdr{padding:11px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
+.panel-hdr h3{font-size:12px;font-weight:600;color:var(--blue)}
+.panel-body{padding:14px}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px}
+@media(max-width:700px){.row2,.row3{grid-template-columns:1fr}}
+.cards-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(148px,1fr));gap:9px;margin-bottom:16px}
+.kpi-card{background:#fff;border-radius:9px;padding:12px 14px;border:1px solid var(--border);box-shadow:var(--shadow)}
+.kpi-label{font-size:10px;color:var(--gray-m);font-weight:600;text-transform:uppercase;letter-spacing:.4px;margin-bottom:3px}
+.kpi-value{font-size:19px;font-weight:700;line-height:1.1}
+.kpi-delta{font-size:10px;margin-top:3px}
+.up{color:var(--green-m)}.down{color:var(--red-m)}.flat{color:var(--gray-m)}
+.al-r{border-left:3px solid var(--red-m)}.al-a{border-left:3px solid var(--amber-m)}.al-g{border-left:3px solid var(--green-m)}.al-b{border-left:3px solid var(--blue-m)}
+table.anal{width:100%;border-collapse:collapse;font-size:12px}
+table.anal th{background:#f8fafc;font-weight:600;padding:6px 10px;text-align:left;border-bottom:2px solid var(--border);color:var(--blue);font-size:10px;text-transform:uppercase;letter-spacing:.4px}
+table.anal td{padding:5px 10px;border-bottom:1px solid var(--border);vertical-align:middle}
+table.anal tr:last-child td{border-bottom:none}
+table.anal tr:hover td{background:#fafbfc}
+.num{text-align:right;font-variant-numeric:tabular-nums}
+.bold{font-weight:600}
+.pill{display:inline-block;padding:1px 7px;border-radius:10px;font-size:10px;font-weight:600}
+.pill-r{background:var(--red-l);color:var(--red)}.pill-a{background:var(--amber-l);color:var(--amber)}
+.pill-g{background:var(--green-l);color:var(--green)}.pill-b{background:var(--blue-l);color:var(--blue)}
+.alert-list{display:flex;flex-direction:column;gap:6px}
+.alert-item{display:flex;gap:9px;padding:9px 11px;border-radius:7px;align-items:flex-start}
+.alert-item.red{background:var(--red-l);border-left:3px solid var(--red-m)}
+.alert-item.amber{background:var(--amber-l);border-left:3px solid var(--amber-m)}
+.alert-item.green{background:var(--green-l);border-left:3px solid var(--green-m)}
+.alert-icon{font-size:13px;flex-shrink:0;margin-top:1px}
+.alert-title{font-weight:600;font-size:12px;margin-bottom:1px}
+.alert-desc{font-size:11px;opacity:.85}
+.ratio-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(165px,1fr));gap:9px}
+.ratio-card{border:1px solid var(--border);border-radius:7px;padding:10px;background:#fafbfc}
+.ratio-name{font-size:10px;color:var(--gray-m);margin-bottom:2px;font-weight:600;text-transform:uppercase;letter-spacing:.3px}
+.ratio-val{font-size:16px;font-weight:700;margin-bottom:1px}
+.ratio-bar{height:3px;border-radius:2px;background:#e5e7eb;overflow:hidden;margin-top:5px}
+.ratio-fill{height:100%;border-radius:2px}
+.ratio-bench{font-size:10px;color:var(--gray-m);margin-top:2px}
+.ai-box{background:var(--blue);color:#fff;border-radius:9px;padding:16px;margin-bottom:12px}
+.ai-box h3{font-size:10px;font-weight:600;opacity:.6;margin-bottom:6px;letter-spacing:.6px;text-transform:uppercase}
+.ai-response{font-size:13px;line-height:1.7;white-space:pre-wrap}
+.ai-loading{display:flex;gap:4px;align-items:center;opacity:.7}
+.ai-dot{width:5px;height:5px;border-radius:50%;background:#fff;animation:pulse 1s infinite}
+.ai-dot:nth-child(2){animation-delay:.2s}.ai-dot:nth-child(3){animation-delay:.4s}
+@keyframes pulse{0%,100%{opacity:.3}50%{opacity:1}}
+.btn-ai{background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.3);color:#fff;padding:6px 12px;border-radius:5px;font-size:11px;cursor:pointer;margin-top:9px}
+.hm-wrap{overflow-x:auto}
+.hm-table{border-collapse:collapse;width:100%;font-size:11px}
+.hm-table th{padding:5px 9px;font-size:10px;color:var(--gray-m);border-bottom:2px solid var(--border);text-align:center;font-weight:600}
+.hm-table th:first-child{text-align:left}
+.hm-table td{padding:4px 7px;border-bottom:1px solid var(--border)}
+.hm-pill{display:inline-block;padding:2px 9px;border-radius:10px;font-weight:700;font-size:11px}
+.chart-wrap{position:relative;width:100%}
+.h180{height:180px}.h220{height:220px}.h260{height:260px}.h290{height:290px}.h310{height:310px}
+.sec-title{font-size:14px;font-weight:700;color:var(--blue);margin-bottom:12px}
+.year-tag{background:var(--blue-l);color:var(--blue);font-size:10px;padding:2px 9px;border-radius:18px;font-weight:600;margin-left:7px}
+.seuils-header{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;margin-bottom:16px}
+.seuil-kpi{background:#fff;border-radius:9px;padding:14px 16px;border:1px solid var(--border);text-align:center}
+.seuil-kpi .label{font-size:10px;color:var(--gray-m);text-transform:uppercase;letter-spacing:.4px;font-weight:600;margin-bottom:4px}
+.seuil-kpi .val{font-size:22px;font-weight:800}
+.seuil-kpi .sub{font-size:10px;color:var(--gray-m);margin-top:2px}
+.seuil-kpi.ss{border-top:3px solid var(--blue-m)}.seuil-kpi.sp{border-top:3px solid var(--amber-m)}.seuil-kpi.sr{border-top:3px solid var(--green-m)}
+.seuils-table table{width:100%;border-collapse:collapse;font-size:11px}
+.seuils-table th{background:#f0f4ff;color:var(--blue);font-weight:600;padding:7px 10px;text-align:left;border-bottom:2px solid var(--border);font-size:10px;text-transform:uppercase;letter-spacing:.3px}
+.seuils-table td{padding:6px 10px;border-bottom:1px solid var(--border);vertical-align:middle}
+.seuils-table tr:hover td{background:#fafbfc}
+.taux-input{width:55px;border:1px solid var(--border);border-radius:4px;padding:3px 6px;font-size:11px;text-align:center}
+.taux-input:focus{border-color:var(--blue-m);outline:none}
+.retained-input{width:90px;border:1px solid var(--border);border-radius:4px;padding:3px 6px;font-size:11px;text-align:right}
+.retained-input:focus{border-color:var(--blue-m);outline:none}
+.bareme-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:16px}
+.bareme-table table{width:100%;border-collapse:collapse;font-size:11px}
+.bareme-table th{background:#f0f4ff;color:var(--blue);font-size:10px;font-weight:600;padding:6px 9px;text-align:left;border-bottom:2px solid var(--border)}
+.bareme-table td{padding:5px 9px;border-bottom:1px solid var(--border)}
+.bareme-table .active-row{background:#dbeafe;font-weight:600}
+.hours-input{width:70px;border:1px solid var(--border);border-radius:4px;padding:3px 6px;font-size:11px;text-align:right}
+.ef-tabs{display:flex;gap:0;margin-bottom:14px;border-bottom:2px solid var(--border)}
+.ef-tab{padding:8px 16px;font-size:12px;font-weight:500;cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-2px;color:var(--gray-m)}
+.ef-tab.active{color:var(--blue);border-bottom-color:var(--blue-m)}
+.ef-content{display:none}.ef-content.active{display:block}
+.ef-table{width:100%;border-collapse:collapse;font-size:11.5px}
+.ef-table th{background:#1e3a8a;color:#fff;padding:7px 12px;text-align:right;font-weight:600;font-size:11px}
+.ef-table th:first-child{text-align:left}
+.ef-table td{padding:4px 12px;border-bottom:1px solid #f1f5f9;vertical-align:middle}
+.ef-table .r-section{background:#e0e7ff;font-weight:700;color:var(--blue);font-size:11px;text-transform:uppercase;letter-spacing:.3px}
+.ef-table .r-section td{border-bottom:2px solid var(--blue-m)!important}
+.ef-table .r-sous-total{background:#f0f4ff;font-weight:600;font-style:italic}
+.ef-table .r-total{background:#1e3a8a;color:#fff;font-weight:700}
+.ef-table .r-total td{border-bottom:none!important}
+.ef-table .r-detail{color:#374151}
+.ef-table .r-compte{color:#9ca3af;font-size:10.5px}
+.ef-table .r-sig{background:#fef3c7;font-weight:700;color:#92400e}
+.ef-table .r-sig td{border-bottom:2px solid var(--amber-m)!important}
+.ef-table tr:hover td{background:rgba(59,130,246,.04)}
+.ef-table .r-total:hover td,.ef-table .r-section:hover td,.ef-table .r-sig:hover td{background:inherit}
+.neg{color:var(--red-m)}.pos{color:var(--green-m)}
+.var-pos{color:var(--green-m);font-weight:600}.var-neg{color:var(--red-m);font-weight:600}
+.detail-btn{margin-left:6px;background:var(--blue-l);color:var(--blue);border:none;border-radius:4px;padding:1px 7px;font-size:10px;cursor:pointer;font-weight:600}
+.detail-row{background:#fafbfc}
+.detail-row td{padding:3px 10px 3px 32px;font-size:11px;color:var(--gray)}
+.cpt-badge{background:#f1f5f9;color:var(--blue);border-radius:3px;padding:1px 5px;font-size:10px;font-weight:600;margin-right:6px;font-family:monospace}
+</style>
+</head>
+<body>
+<div class="hdr">
+  <div><h1>Revue Analytique Préliminaire & Plan de Mission — CAC</h1><p>Import FEC · Bilan / CR / SIG · Seuils de signification</p></div>
+  <div style="display:flex;gap:7px;flex-wrap:wrap">
+    <span class="badge" id="badgeEntite">Entité : —</span>
+    <span class="badge" id="badgeEx">Exercice N : —</span>
+  </div>
+</div>
+
+<div class="nav">
+  <div class="tab active" onclick="showTab('import')">📂 Import FEC</div>
+  <div class="tab disabled" id="tab-pdm" onclick="showTab('pdm')">📝 Plan de mission</div>
+  <div class="tab disabled" id="tab-etats" onclick="showTab('etats')">📋 États financiers</div>
+  <div class="tab disabled" id="tab-seuils" onclick="showTab('seuils')">🎯 Seuils</div>
+  <div class="tab disabled" id="tab-synthese" onclick="showTab('synthese')">📊 Synthèse</div>
+  <div class="tab disabled" id="tab-bilan" onclick="showTab('bilan')">⚖️ Bilan</div>
+  <div class="tab disabled" id="tab-cr" onclick="showTab('cr')">📈 Résultat & SIG</div>
+  <div class="tab disabled" id="tab-ratios" onclick="showTab('ratios')">🔢 Ratios</div>
+  <div class="tab disabled" id="tab-risques" onclick="showTab('risques')">⚠️ Risques CAC</div>
+  <div class="tab disabled" id="tab-ia" onclick="showTab('ia')">🤖 Synthèse IA</div>
+</div>
+
+<!-- IMPORT -->
+<div class="section active content" id="sec-import">
+  <div class="info-grid">
+    <div class="info-card"><label>Entité / Groupe</label><input id="nomEntite" placeholder="Nom de la société"></div>
+    <div class="info-card"><label>Exercice N (clôture)</label><input id="exerciceN" placeholder="Ex : 31/12/2025"></div>
+    <div class="info-card">
+      <label>Secteur</label>
+      <select id="secteur" onchange="toggleAutre(this)">
+        <option>Holding / Investissement</option><option>Industrie</option>
+        <option>Commerce / Distribution</option><option>Services</option>
+        <option>Viticole / Agricole</option><option>Immobilier</option>
+        <option>Banque / Assurance</option><option value="autres">Autres</option>
+      </select>
+      <input id="secteurAutre" placeholder="Préciser…" style="display:none;margin-top:6px">
+    </div>
+    <div class="info-card"><label>Associé(e) responsable</label><input id="associe" placeholder="Prénom NOM"></div>
+  </div>
+  <div style="font-size:12px;font-weight:600;color:var(--blue);margin-bottom:8px">Chargement des FEC — jusqu'à 3 exercices</div>
+  <div class="fec-grid">
+    <div class="fec-card" id="card-n2" onclick="triggerFile('fec-n2')">
+      <div class="fec-icon">📄</div><div class="fec-year">Exercice N-2</div>
+      <div class="fec-status" id="status-n2">Cliquer pour charger</div>
+      <input type="file" class="fec-input" id="fec-n2" accept=".txt,.csv" onchange="loadFEC(this,'n2')">
+    </div>
+    <div class="fec-card" id="card-n1" onclick="triggerFile('fec-n1')">
+      <div class="fec-icon">📄</div><div class="fec-year">Exercice N-1</div>
+      <div class="fec-status" id="status-n1">Cliquer pour charger</div>
+      <input type="file" class="fec-input" id="fec-n1" accept=".txt,.csv" onchange="loadFEC(this,'n1')">
+    </div>
+    <div class="fec-card" id="card-n" onclick="triggerFile('fec-n')">
+      <div class="fec-icon">📄</div>
+      <div class="fec-year">Exercice N <span style="color:var(--red-m);font-size:10px">obligatoire</span></div>
+      <div class="fec-status" id="status-n">Cliquer pour charger</div>
+      <input type="file" class="fec-input" id="fec-n" accept=".txt,.csv" onchange="loadFEC(this,'n')">
+    </div>
+  </div>
+  <div class="parse-log" id="parseLog"></div>
+  <div id="diagPanel" style="display:none;background:#fff;border:1px solid var(--border);border-radius:9px;padding:14px;margin-top:12px">
+    <div style="font-size:12px;font-weight:600;color:var(--blue);margin-bottom:8px;display:flex;justify-content:space-between">
+      <span>🔍 Diagnostic reconstitution — Exercice N</span>
+      <button onclick="document.getElementById('diagPanel').style.display='none'" style="background:none;border:none;color:var(--gray-m);cursor:pointer;font-size:16px">×</button>
+    </div>
+    <div id="diagContent" style="font-size:11px"></div>
+  </div>
+  <div class="btn-center">
+    <button class="btn-primary" id="btnGenerate" onclick="generateAnalysis()" disabled>Générer l'analyse complète</button>
+    <button class="btn-demo" onclick="loadDemo()">Charger données de démo</button>
+  </div>
+  <p style="text-align:center;font-size:11px;color:var(--gray-m);margin-top:8px">Format FEC standard DGFiP — séparateur | ou tabulation</p>
+
+  <!-- IMPORT BALANCE -->
+  <div style="margin-top:16px;border-top:1px dashed var(--border);padding-top:14px">
+    <div style="font-size:12px;font-weight:600;color:var(--blue);margin-bottom:2px">
+      Balance comptable <span style="font-weight:400;color:var(--gray-m);font-size:11px">— optionnelle · recommandée pour fiabiliser le bilan</span>
+    </div>
+    <div style="font-size:11px;color:var(--gray-m);margin-bottom:8px">Soldes finaux débiteurs/créditeurs par compte — source de vérité pour les classes 1–5 (actif/passif). Corrige les écarts de reconstitution FEC.</div>
+    <div class="fec-grid">
+      <div class="fec-card" id="bcard-n2" onclick="triggerFile('bal-n2')">
+        <div class="fec-icon">⚖️</div><div class="fec-year" style="font-size:12px">Balance N-2</div>
+        <div class="fec-status" id="bstatus-n2">Cliquer pour charger</div>
+        <input type="file" class="fec-input" id="bal-n2" accept=".txt,.csv,.xlsx,.xls" onchange="loadBalance(this,'n2')">
+      </div>
+      <div class="fec-card" id="bcard-n1" onclick="triggerFile('bal-n1')">
+        <div class="fec-icon">⚖️</div><div class="fec-year" style="font-size:12px">Balance N-1</div>
+        <div class="fec-status" id="bstatus-n1">Cliquer pour charger</div>
+        <input type="file" class="fec-input" id="bal-n1" accept=".txt,.csv,.xlsx,.xls" onchange="loadBalance(this,'n1')">
+      </div>
+      <div class="fec-card" id="bcard-n" onclick="triggerFile('bal-n')">
+        <div class="fec-icon">⚖️</div><div class="fec-year" style="font-size:12px">Balance N</div>
+        <div class="fec-status" id="bstatus-n">Cliquer pour charger</div>
+        <input type="file" class="fec-input" id="bal-n" accept=".txt,.csv,.xlsx,.xls" onchange="loadBalance(this,'n')">
+      </div>
+    </div>
+    <p style="font-size:11px;color:var(--gray-m);margin-top:4px">Formats : CSV/TXT (séparateur | ou tabulation) · Excel (.xlsx) — Colonnes requises : <strong>Solde Débiteur</strong> · <strong>Solde Créditeur</strong></p>
+  </div>
+
+  <!-- IMPORT PLAN DE MISSION -->
+  <div style="margin-top:24px;border-top:2px dashed var(--border);padding-top:20px">
+    <div style="font-size:12px;font-weight:600;color:var(--blue);margin-bottom:4px">Import plan de mission existant (Word / PDF)</div>
+    <div style="font-size:12px;color:var(--gray-m);margin-bottom:12px">L'IA extrait automatiquement les données du document et pré-remplit l'onglet "Plan de mission".</div>
+    <div id="pdm-drop-zone" onclick="document.getElementById('pdmFileInput').click()"
+      style="border:1.5px dashed var(--border);border-radius:10px;padding:28px;text-align:center;cursor:pointer;background:#fff;transition:all .2s">
+      <div style="font-size:28px;margin-bottom:8px">📋</div>
+      <div style="font-size:13px;font-weight:600;color:var(--blue);margin-bottom:4px">Déposer le plan de mission ici</div>
+      <div style="font-size:12px;color:var(--gray-m)">Formats acceptés : <strong>.docx</strong> · <strong>.pdf</strong></div>
+      <input type="file" id="pdmFileInput" accept=".pdf,.docx,.doc" style="display:none">
+    </div>
+    <div id="pdm-import-status" style="display:none;margin-top:12px"></div>
+  </div>
+</div>
+
+<!-- PLAN DE MISSION -->
+<div class="section content" id="sec-pdm">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:10px">
+    <div class="sec-title" style="margin-bottom:0">Plan de Mission — DA 11</div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <button onclick="exportWord()" style="background:var(--blue);color:#fff;border:none;padding:8px 16px;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:6px">📄 Export Word</button>
+      <button onclick="exportExcel()" style="background:#065f46;color:#fff;border:none;padding:8px 16px;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:6px">📊 Export Excel</button>
+    </div>
+  </div>
+
+  <!-- EN-TÊTE -->
+  <div class="panel">
+    <div class="panel-hdr"><h3>En-tête du dossier</h3></div>
+    <div class="panel-body">
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px">
+        <div><label class="pdm-label">Dossier (réf.)</label><input class="pdm-input" id="pdm_dossier" value="GF"></div>
+        <div><label class="pdm-label">Clôture</label><input class="pdm-input" id="pdm_cloture" value="31 12 25"></div>
+        <div><label class="pdm-label">Fait par</label><input class="pdm-input" id="pdm_faitpar" value="CL"></div>
+        <div><label class="pdm-label">Date</label><input class="pdm-input" id="pdm_date" value="28/04/2026"></div>
+        <div><label class="pdm-label">Visa CM</label><input class="pdm-input" id="pdm_cm" value=""></div>
+        <div><label class="pdm-label">Visa CAC</label><input class="pdm-input" id="pdm_cac" value=""></div>
+        <div><label class="pdm-label">Référence</label><input class="pdm-input" id="pdm_ref" value="DA 11"></div>
+        <div><label class="pdm-label">Folio</label><input class="pdm-input" id="pdm_folio" value="1/24"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PARTIE 1 : CONTEXTE -->
+  <div class="pdm-section-title">1. Contexte général d'intervention</div>
+
+  <div class="panel">
+    <div class="panel-hdr"><h3>1.1.2. Nature de la mission et étendue des travaux</h3></div>
+    <div class="panel-body">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+        <div><label class="pdm-label">Date de nomination</label><input class="pdm-input" id="pdm_nomination" value="30/06/2008"></div>
+        <div><label class="pdm-label">Date de renouvellement</label><input class="pdm-input" id="pdm_renouvellement" value="07/08/2020"></div>
+        <div><label class="pdm-label">Date de fin de mandat</label><input class="pdm-input" id="pdm_fin_mandat" value="31/12/2025"></div>
+        <div><label class="pdm-label">CAC titulaire du mandat</label><input class="pdm-input" id="pdm_cac_titulaire" value="Arevco"></div>
+        <div><label class="pdm-label">Signataire</label><input class="pdm-input" id="pdm_signataire" value="Yohan Bru"></div>
+        <div><label class="pdm-label">Interlocuteur client</label><input class="pdm-input" id="pdm_interlocuteur" value="Cédric LABRUSSE"></div>
+        <div><label class="pdm-label">Responsable de dossier</label><input class="pdm-input" id="pdm_responsable" value="Gwenaëlle VINHAS"></div>
+        <div><label class="pdm-label">CAC suppléant</label><input class="pdm-input" id="pdm_suppleant" value="Cabinet DELHOMME"></div>
+        <div><label class="pdm-label">Co-CAC</label><input class="pdm-input" id="pdm_cocac" value="N/A"></div>
+      </div>
+      <div style="margin-top:10px"><label class="pdm-label">Commentaires mission</label><textarea class="pdm-textarea" id="pdm_mission_comment" rows="3">Les travaux de contrôle sont décrits selon un programme de travail ventilé par cycle au § 2.2 de ce plan de mission.</textarea></div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-hdr"><h3>1.2.1. Interlocuteurs</h3></div>
+    <div class="panel-body">
+      <div style="overflow-x:auto">
+        <table style="width:100%;border-collapse:collapse;font-size:12px" id="pdm_interlocuteurs_table">
+          <thead><tr style="background:#f0f4ff">
+            <th style="padding:7px 10px;text-align:left;border-bottom:2px solid var(--border);color:var(--blue);font-size:11px;font-weight:600">Fonction</th>
+            <th style="padding:7px 10px;text-align:left;border-bottom:2px solid var(--border);color:var(--blue);font-size:11px;font-weight:600">Nom</th>
+            <th style="padding:7px 10px;text-align:left;border-bottom:2px solid var(--border);color:var(--blue);font-size:11px;font-weight:600">Coordonnées</th>
+            <th style="padding:7px 10px;border-bottom:2px solid var(--border);width:30px"></th>
+          </tr></thead>
+          <tbody id="pdm_interlocuteurs_body"></tbody>
+        </table>
+        <button onclick="addInterlocuteur()" style="margin-top:8px;background:var(--blue-l);color:var(--blue);border:1px solid var(--blue-m);border-radius:5px;padding:5px 12px;font-size:11px;cursor:pointer;font-weight:500">+ Ajouter un interlocuteur</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-hdr"><h3>1.2.2. Informations générales & activité</h3></div>
+    <div class="panel-body">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px">
+        <div><label class="pdm-label">Forme juridique</label><input class="pdm-input" id="pdm_forme" value="SAS"></div>
+        <div><label class="pdm-label">Date de création</label><input class="pdm-input" id="pdm_creation" value="02/04/1986"></div>
+        <div><label class="pdm-label">N° RCS</label><input class="pdm-input" id="pdm_rcs" value="337 608 467"></div>
+        <div><label class="pdm-label">N° SIRET</label><input class="pdm-input" id="pdm_siret" value="337 608 467 00011"></div>
+        <div><label class="pdm-label">N° NAF (APE)</label><input class="pdm-input" id="pdm_naf" value="0121 Z"></div>
+        <div><label class="pdm-label">Tribunal compétent</label><input class="pdm-input" id="pdm_tribunal" value="Bordeaux"></div>
+        <div><label class="pdm-label">Groupe</label><input class="pdm-input" id="pdm_groupe" value="Gonfrier"></div>
+        <div><label class="pdm-label">Date de fin de société</label><input class="pdm-input" id="pdm_fin_societe" value="05/06/2066"></div>
+      </div>
+      <div><label class="pdm-label">Historique / Nature des activités / Stratégie</label>
+        <textarea class="pdm-textarea" id="pdm_historique" rows="5">La SAS GONFRIER FRERES est une société d'exploitation viticole. Elle a été créée en janvier 1986 sous forme de GAEC, et a été transformée en SCEA en 1997 puis en SAS en juin 2016. Les surfaces exploitées sont soit en propriété, soit en fermage.</textarea></div>
+      <div style="margin-top:8px"><label class="pdm-label">Système d'information & outils de pilotage</label>
+        <textarea class="pdm-textarea" id="pdm_si" rows="3">La comptabilité est saisie sous ISACOMPTA et la gestion commerciale est gérée sous ISAVIGNE. ISAPAYE pour la paye.</textarea></div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-hdr"><h3>1.2.3. Particularités juridiques</h3></div>
+    <div class="panel-body">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+        <div><label class="pdm-label">Capital social</label><input class="pdm-input" id="pdm_capital" value="332 244 € (15 102 titres × 22 €)"></div>
+        <div><label class="pdm-label">Organe de direction</label><input class="pdm-input" id="pdm_direction" value="Président (personne physique ou morale)"></div>
+        <div><label class="pdm-label">Plafond d'investissement</label><input class="pdm-input" id="pdm_plafond_invest" value="100 K€ (sinon décision d'AG)"></div>
+        <div><label class="pdm-label">Plafond d'emprunt</label><input class="pdm-input" id="pdm_plafond_emprunt" value="100 K€ (sinon décision d'AG)"></div>
+      </div>
+      <div style="margin-top:8px"><label class="pdm-label">Objet social détaillé</label>
+        <textarea class="pdm-textarea" id="pdm_objet" rows="2">Culture de la Vigne. Acquisition, administration, exploitation de tous biens agricoles. Vente et transformation des produits de l'exploitation.</textarea></div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-hdr"><h3>1.2.4. Particularités fiscales</h3></div>
+    <div class="panel-body">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+        <div><label class="pdm-label">Statut fiscal</label><input class="pdm-input" id="pdm_fiscal_statut" value="Société commerciale soumise à l'IS"></div>
+        <div><label class="pdm-label">Intégration fiscale</label><input class="pdm-input" id="pdm_integration" value="Non"></div>
+        <div><label class="pdm-label">TVA réelle</label><input class="pdm-input" id="pdm_tva" value="TVA agricole annuelle — régime simplifié"></div>
+        <div><label class="pdm-label">Dernier contrôle fiscal</label><input class="pdm-input" id="pdm_ctrl_fiscal" value="2002"></div>
+        <div><label class="pdm-label">Dernier contrôle DGCCRF</label><input class="pdm-input" id="pdm_ctrl_dgccrf" value=""></div>
+        <div><label class="pdm-label">Particularités fiscales</label><input class="pdm-input" id="pdm_particularites_fiscales" value="Droits de régie à acquitter mensuellement"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-hdr"><h3>1.2.5. Particularités sociales</h3></div>
+    <div class="panel-body">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+        <div><label class="pdm-label">Effectifs (ETP)</label><input class="pdm-input" id="pdm_effectifs" value="49 ETP"></div>
+        <div><label class="pdm-label">Convention collective</label><input class="pdm-input" id="pdm_convention" value="Exploitants agricoles de la Gironde"></div>
+        <div><label class="pdm-label">Accord de participation</label><input class="pdm-input" id="pdm_participation" value="Non"></div>
+        <div><label class="pdm-label">Accord d'intéressement</label><input class="pdm-input" id="pdm_interessement" value="Non"></div>
+        <div><label class="pdm-label">13e mois / primes</label><input class="pdm-input" id="pdm_prime" value="Oui"></div>
+        <div><label class="pdm-label">Dernier contrôle social</label><input class="pdm-input" id="pdm_ctrl_social" value="MSA 2023 : 30 K€ de redressement"></div>
+      </div>
+      <div style="margin-top:8px"><label class="pdm-label">Autres particularités sociales</label>
+        <textarea class="pdm-textarea" id="pdm_social_autres" rows="2">Entreprise organisée sur 35h. PEE avec abondement à 300%. CDI intermittents. Dérogation pour CDD occasionnels (saisonniers).</textarea></div>
+    </div>
+  </div>
+
+  <!-- PARTIE 2 : ANALYSE -->
+  <div class="pdm-section-title">2. Analyse des problématiques de la mission d'audit</div>
+
+  <div class="panel">
+    <div class="panel-hdr"><h3>2.1. Examen critique et entretien dirigeants</h3></div>
+    <div class="panel-body">
+      <div style="margin-bottom:10px"><label class="pdm-label">Synthèse de l'examen critique du bilan</label>
+        <textarea class="pdm-textarea" id="pdm_exam_bilan" rows="5">Actif immobilisé : Peu d'acquisitions sur l'exercice, principalement des terrains pour 304 K€ et des constructions pour 219 K€. Pas de cessions. Taux d'amortissement stable par rapport à N-1 (6,4% vs 6,5%).
+Actif circulant : Stocks identiques à N-1, pas de provision (à vérifier). Créances clients en diminution de 775 K€. Trésorerie quasiment égale à 0 du fait de l'endettement.</textarea></div>
+      <div style="margin-bottom:10px"><label class="pdm-label">Synthèse de l'examen critique du compte de résultat</label>
+        <textarea class="pdm-textarea" id="pdm_exam_cr" rows="5">Forte augmentation du CA (+22%) avec 28 Khl vendus contre 22 Khl en N-1. Diminution des autres produits de 1,5 M€ (baisse de la production stockée). Les charges financières augmentent de 152 K€ du fait de la renégociation bancaire. Résultat net déficitaire à -756 K€.</textarea></div>
+      <div><label class="pdm-label">Comptes-rendus d'entretiens dirigeants</label>
+        <textarea class="pdm-textarea" id="pdm_rdv" rows="6">RDV Eric Gonfrier 28/04/2026 : La transmission est en stand-by. Audit MISA satisfaisant. CIR 2025 manquant (250 K€ sur GF). Frais d'hypothèques pour 250 K€. Piste d'investisseur pour Chais de Rions (40%).
+RDV Eric Gonfrier 15/05/2025 : Conciliation à la demande du CRCA et BPSO. 5,2 M€ de new money octroyés. Protocole MSA pour 600 K€. Marchés MISA : Kirkland 1,98 M bouteilles, Walmart Chine 470 K bouteilles.</textarea></div>
+    </div>
+  </div>
+
+  <!-- Approche par les risques -->
+  <div class="panel">
+    <div class="panel-hdr"><h3>2.2. Approche par les risques</h3></div>
+    <div class="panel-body">
+      <div style="overflow-x:auto">
+        <table style="width:100%;border-collapse:collapse;font-size:11px">
+          <thead><tr style="background:#1e3a8a;color:#fff">
+            <th style="padding:7px 10px;text-align:left;font-size:10px;font-weight:600">Cycles</th>
+            <th style="padding:7px 10px;text-align:center;font-size:10px;font-weight:600">Risques inhérents</th>
+            <th style="padding:7px 10px;text-align:center;font-size:10px;font-weight:600">Risques liés aux contrôles</th>
+            <th style="padding:7px 10px;text-align:center;font-size:10px;font-weight:600">Risques d'audit</th>
+            <th style="padding:7px 10px;text-align:center;font-size:10px;font-weight:600">Travaux mis en œuvre</th>
+            <th style="padding:7px 10px;text-align:center;font-size:10px;font-weight:600">Contrôle interne</th>
+            <th style="padding:7px 10px;text-align:left;font-size:10px;font-weight:600">Notes</th>
+          </tr></thead>
+          <tbody id="risquesBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Cycles -->
+  <div class="pdm-section-title">2.3. Adaptation du programme de travail par cycle d'audit</div>
+  <div id="pdm_cycles"></div>
+
+  <!-- PARTIE 3 : ORGANISATION -->
+  <div class="pdm-section-title">3. Organisation de la mission d'audit</div>
+
+  <div class="panel">
+    <div class="panel-hdr"><h3>3.2. Barème de temps & seuils</h3></div>
+    <div class="panel-body">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">
+        <div><label class="pdm-label">Seuil de signification retenu</label><input class="pdm-input" id="pdm_seuil" value="280 K€ (CA × 3%)"></div>
+        <div><label class="pdm-label">Seuil de planification (SP)</label><input class="pdm-input" id="pdm_sp" value="140 K€ (50% du SS)"></div>
+        <div><label class="pdm-label">Anomalies insignifiantes (SR)</label><input class="pdm-input" id="pdm_sr" value="14 K€ (5% du SS)"></div>
+        <div><label class="pdm-label">Heures théoriques barème</label><input class="pdm-input" id="pdm_h_theoriques" value="300 à 700 heures"></div>
+        <div><label class="pdm-label">Heures réelles effectuées</label><input class="pdm-input" id="pdm_h_reelles" value="150 heures"></div>
+        <div><label class="pdm-label">Respect du barème</label><input class="pdm-input" id="pdm_respect" value="Non — Dérogation à demander"></div>
+      </div>
+      <div><label class="pdm-label">Justification dérogation barème</label>
+        <textarea class="pdm-textarea" id="pdm_derogation" rows="3">Présence d'un expert-comptable sur le dossier (Cabinet BSF). Fort niveau de connaissance du dossier. CAC sur les autres sociétés du groupe. Présence à l'inventaire physique.</textarea></div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-hdr"><h3>3.3. Planification, répartition des travaux et budget</h3></div>
+    <div class="panel-body">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px">
+        <div><label class="pdm-label">Honoraires N-1</label><input class="pdm-input" id="pdm_hono_n1" value="8 000 €"></div>
+        <div><label class="pdm-label">Honoraires N à facturer</label><input class="pdm-input" id="pdm_hono_n" value="8 200 €"></div>
+        <div><label class="pdm-label">Variation N/N-1</label><input class="pdm-input" id="pdm_hono_var" value="2,50%"></div>
+        <div><label class="pdm-label">Taux horaire de facturation</label><input class="pdm-input" id="pdm_taux_horaire" value="55 €/h"></div>
+      </div>
+      <div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:11px" id="planningTable">
+        <thead><tr style="background:#1e3a8a;color:#fff">
+          <th style="padding:6px 10px;text-align:left;font-size:10px">Mission / Tâche</th>
+          <th style="padding:6px 8px;text-align:center;font-size:10px">CAC (YB)</th>
+          <th style="padding:6px 8px;text-align:center;font-size:10px">CM (GV)</th>
+          <th style="padding:6px 8px;text-align:center;font-size:10px">AUD (KP)</th>
+          <th style="padding:6px 8px;text-align:center;font-size:10px">AUD (BC)</th>
+          <th style="padding:6px 8px;text-align:center;font-size:10px">SE</th>
+          <th style="padding:6px 8px;text-align:center;font-size:10px">Total</th>
+        </tr></thead>
+        <tbody id="planningBody"></tbody>
+        <tfoot id="planningFoot"></tfoot>
+      </table></div>
+    </div>
+  </div>
+</div>
+
+<!-- STYLES PDM -->
+<style>
+.pdm-label{font-size:10px;color:var(--gray-m);display:block;margin-bottom:3px;font-weight:600;text-transform:uppercase;letter-spacing:.3px}
+.pdm-input{width:100%;border:1px solid var(--border);border-radius:5px;padding:5px 8px;font-size:12px;color:var(--gray);background:#fff;outline:none}
+.pdm-input:focus{border-color:var(--blue-m)}
+.pdm-textarea{width:100%;border:1px solid var(--border);border-radius:5px;padding:6px 8px;font-size:12px;color:var(--gray);background:#fff;outline:none;resize:vertical}
+.pdm-textarea:focus{border-color:var(--blue-m)}
+.pdm-section-title{font-size:13px;font-weight:700;color:#fff;background:var(--blue);padding:10px 16px;border-radius:8px;margin:16px 0 10px}
+.cycle-panel{background:#fff;border:1px solid var(--border);border-radius:9px;margin-bottom:12px;overflow:hidden}
+.cycle-hdr{padding:10px 16px;background:#e0e7ff;display:flex;align-items:center;justify-content:space-between;cursor:pointer;border-bottom:1px solid var(--border)}
+.cycle-hdr h4{font-size:12px;font-weight:700;color:var(--blue)}
+.cycle-body{padding:14px;display:none}
+.cycle-body.open{display:block}
+.cycle-row{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px}
+.risk-badge{display:inline-block;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:600;cursor:pointer;border:none}
+.risk-faible{background:#d1fae5;color:#065f46}
+.risk-moyen{background:#fef3c7;color:#92400e}
+.risk-eleve{background:#fee2e2;color:#7f1d1d}
+.risk-min{background:#f1f5f9;color:#64748b}
+</style>
+<div class="section content" id="sec-etats">
+  <div class="sec-title">États financiers détaillés <span class="year-tag" id="ef-year"></span></div>
+  <div class="ef-tabs">
+    <div class="ef-tab active" onclick="showEF('bilan-actif')">Bilan — Actif</div>
+    <div class="ef-tab" onclick="showEF('bilan-passif')">Bilan — Passif</div>
+    <div class="ef-tab" onclick="showEF('cr')">Compte de résultat</div>
+    <div class="ef-tab" onclick="showEF('sig')">SIG</div>
+  </div>
+  <div class="ef-content active" id="ef-bilan-actif"><div id="efBilanActif"></div></div>
+  <div class="ef-content" id="ef-bilan-passif"><div id="efBilanPassif"></div></div>
+  <div class="ef-content" id="ef-cr"><div id="efCR"></div></div>
+  <div class="ef-content" id="ef-sig"><div id="efSIG"></div></div>
+</div>
+
+<!-- SEUILS -->
+<div class="section content" id="sec-seuils">
+  <div class="sec-title">Seuils de signification — Plan de mission</div>
+  <div class="seuils-header" id="seuilsHeader"></div>
+  <div class="panel">
+    <div class="panel-hdr"><h3>Tableau des seuils — Multi-critères (NEP 320)</h3><span style="font-size:10px;color:var(--gray-m)">Taux éditables</span></div>
+    <div class="panel-body seuils-table"><div id="seuilsTable"></div></div>
+  </div>
+  <div class="bareme-grid">
+    <div class="panel"><div class="panel-hdr"><h3>Barème de temps — H213</h3></div><div class="panel-body bareme-table"><div id="baremeTable"></div></div></div>
+    <div class="panel"><div class="panel-hdr"><h3>Anomalie de classement (NEP 450 §14)</h3></div><div class="panel-body" id="anomalieClassement"></div></div>
+  </div>
+</div>
+
+<!-- SYNTHESE -->
+<div class="section content" id="sec-synthese">
+  <div class="sec-title">Tableau de bord direction <span class="year-tag" id="yd1"></span></div>
+  <div class="cards-grid" id="kpiGrid"></div>
+  <div class="row2">
+    <div class="panel"><div class="panel-hdr"><h3>Évolution CA & EBE</h3></div><div class="panel-body"><div class="chart-wrap h220"><canvas id="chartCA"></canvas></div></div></div>
+    <div class="panel"><div class="panel-hdr"><h3>Évolution des marges (%)</h3></div><div class="panel-body"><div class="chart-wrap h220"><canvas id="chartMarges"></canvas></div></div></div>
+  </div>
+  <div class="row2">
+    <div class="panel"><div class="panel-hdr"><h3>Structure résultat N</h3></div><div class="panel-body"><div class="chart-wrap h220"><canvas id="chartDonut"></canvas></div></div></div>
+    <div class="panel"><div class="panel-hdr"><h3>Alertes préliminaires</h3></div><div class="panel-body"><div class="alert-list" id="alertMini"></div></div></div>
+  </div>
+</div>
+
+<!-- BILAN -->
+<div class="section content" id="sec-bilan">
+  <div class="sec-title">Analyse bilan & structure financière</div>
+  <div class="row3" style="margin-bottom:12px">
+    <div class="kpi-card al-b"><div class="kpi-label">FRNG</div><div class="kpi-value" id="vFRNG">—</div><div class="kpi-delta" id="dFRNG"></div></div>
+    <div class="kpi-card"><div class="kpi-label">BFR</div><div class="kpi-value" id="vBFR">—</div><div class="kpi-delta" id="dBFR"></div></div>
+    <div class="kpi-card"><div class="kpi-label">Trésorerie nette</div><div class="kpi-value" id="vTN">—</div><div class="kpi-delta" id="dTN"></div></div>
+  </div>
+  <div class="row2">
+    <div class="panel"><div class="panel-hdr"><h3>Structure actif N</h3></div><div class="panel-body"><div class="chart-wrap h260"><canvas id="chartActif"></canvas></div></div></div>
+    <div class="panel"><div class="panel-hdr"><h3>Structure passif N</h3></div><div class="panel-body"><div class="chart-wrap h260"><canvas id="chartPassif"></canvas></div></div></div>
+  </div>
+  <div class="panel"><div class="panel-hdr"><h3>Évolution FR / BFR / TN</h3></div><div class="panel-body"><div class="chart-wrap h180"><canvas id="chartFRBFR"></canvas></div></div></div>
+  <div class="panel"><div class="panel-hdr"><h3>Variations bilancielles significatives</h3></div><div class="panel-body" id="bilanTable"></div></div>
+</div>
+
+<!-- CR -->
+<div class="section content" id="sec-cr">
+  <div class="sec-title">Compte de résultat & SIG</div>
+  <div class="panel"><div class="panel-hdr"><h3>Cascade SIG — N</h3></div><div class="panel-body"><div class="chart-wrap h290"><canvas id="chartWaterfall"></canvas></div></div></div>
+  <div class="panel"><div class="panel-hdr"><h3>Détail SIG comparé</h3></div><div class="panel-body" id="sigTable"></div></div>
+  <div class="row2">
+    <div class="panel"><div class="panel-hdr"><h3>Décomposition résultat</h3></div><div class="panel-body"><div class="chart-wrap h220"><canvas id="chartCR"></canvas></div></div></div>
+    <div class="panel"><div class="panel-hdr"><h3>Structure charges N</h3></div><div class="panel-body"><div class="chart-wrap h220"><canvas id="chartCharges"></canvas></div></div></div>
+  </div>
+</div>
+
+<!-- RATIOS -->
+<div class="section content" id="sec-ratios">
+  <div class="sec-title">Ratios analytiques</div>
+  <div class="panel"><div class="panel-hdr"><h3>Rentabilité</h3></div><div class="panel-body"><div class="ratio-grid" id="ratioRentab"></div></div></div>
+  <div class="panel"><div class="panel-hdr"><h3>Liquidité & Solvabilité</h3></div><div class="panel-body"><div class="ratio-grid" id="ratioLiquid"></div></div></div>
+  <div class="panel"><div class="panel-hdr"><h3>Heatmap ratios — évolution 3 ans</h3></div><div class="panel-body"><div class="hm-wrap" id="heatmap"></div></div></div>
+  <div class="panel"><div class="panel-hdr"><h3>Évolution ratios clés</h3></div><div class="panel-body"><div class="chart-wrap h260"><canvas id="chartRatios"></canvas></div></div></div>
+</div>
+
+<!-- RISQUES -->
+<div class="section content" id="sec-risques">
+  <div class="sec-title">Zones de risque & programme de travail CAC</div>
+  <div class="row2">
+    <div class="panel"><div class="panel-hdr"><h3>Signaux d'alerte</h3></div><div class="panel-body"><div class="alert-list" id="alertFull"></div></div></div>
+    <div class="panel"><div class="panel-hdr"><h3>Matrice risque</h3></div><div class="panel-body" id="riskMatrix"></div></div>
+  </div>
+  <div class="panel"><div class="panel-hdr"><h3>Programme de travail — axes prioritaires</h3></div><div class="panel-body" id="progTravail"></div></div>
+</div>
+
+<!-- IA -->
+<div class="section content" id="sec-ia">
+  <div class="sec-title">Synthèse narrative — Analyse IA (Claude)</div>
+  <div class="ai-box">
+    <h3>Synthèse globale — Directeur de mission</h3>
+    <div class="ai-loading" id="aiL1"><div class="ai-dot"></div><div class="ai-dot"></div><div class="ai-dot"></div><span style="font-size:11px;margin-left:5px">Génération…</span></div>
+    <div class="ai-response" id="aiT1" style="display:none"></div>
+    <button class="btn-ai" onclick="genAI('global')">Regénérer</button>
+  </div>
+  <div class="row2">
+    <div class="ai-box"><h3>Analyse bilan & structure</h3>
+      <div class="ai-loading" id="aiL2"><div class="ai-dot"></div><div class="ai-dot"></div><div class="ai-dot"></div></div>
+      <div class="ai-response" id="aiT2" style="display:none"></div></div>
+    <div class="ai-box"><h3>Analyse résultat & SIG</h3>
+      <div class="ai-loading" id="aiL3"><div class="ai-dot"></div><div class="ai-dot"></div><div class="ai-dot"></div></div>
+      <div class="ai-response" id="aiT3" style="display:none"></div></div>
+  </div>
+  <div class="ai-box"><h3>Orientations programme de contrôle</h3>
+    <div class="ai-loading" id="aiL4"><div class="ai-dot"></div><div class="ai-dot"></div><div class="ai-dot"></div></div>
+    <div class="ai-response" id="aiT4" style="display:none"></div></div>
+</div>
+
+<script>
+// ── STATE (var uniquement) ──────────────────────────────────
+var fecData = {n2:null, n1:null, n:null};
+var balanceData = {n2:null, n1:null, n:null};
+var D = null;
+var charts = {};
+var seuilsData = [];
+var efRowId = 0;
+
+// ── UI ─────────────────────────────────────────────────────
+function showTab(id){
+  document.querySelectorAll('.section').forEach(function(s){s.classList.remove('active');});
+  document.querySelectorAll('.tab').forEach(function(t){t.classList.remove('active');});
+  document.getElementById('sec-'+id).classList.add('active');
+  var map={import:0,pdm:1,etats:2,seuils:3,synthese:4,bilan:5,cr:6,ratios:7,risques:8,ia:9};
+  document.querySelectorAll('.tab')[map[id]].classList.add('active');
+}
+function showEF(id){
+  document.querySelectorAll('.ef-content').forEach(function(e){e.classList.remove('active');});
+  document.querySelectorAll('.ef-tab').forEach(function(t){t.classList.remove('active');});
+  document.getElementById('ef-'+id).classList.add('active');
+  var tabs=['bilan-actif','bilan-passif','cr','sig'];
+  document.querySelectorAll('.ef-tab')[tabs.indexOf(id)].classList.add('active');
+}
+function toggleAutre(sel){document.getElementById('secteurAutre').style.display=sel.value==='autres'?'block':'none';}
+function triggerFile(id){document.getElementById(id).click();}
+function plog(msg,type){
+  var el=document.getElementById('parseLog');el.style.display='block';
+  el.innerHTML+='<div class="'+(type||'')+'">'+msg+'</div>';el.scrollTop=el.scrollHeight;
+}
+function fmt(v){
+  if(v===null||v===undefined||isNaN(v)||!isFinite(v)) return '—';
+  var s=v<0?'-':''; var a=Math.abs(v);
+  if(a>=1e6) return s+(a/1e6).toFixed(2)+'M€';
+  if(a>=1e3) return s+(a/1e3).toFixed(0)+'k€';
+  return s+a.toFixed(0)+'€';
+}
+function fmtK(v){
+  if(v===null||v===undefined||isNaN(v)||!isFinite(v)) return '—';
+  return new Intl.NumberFormat('fr-FR',{maximumFractionDigits:0}).format(Math.round(v));
+}
+function pct(v,d){d=d||1;if(!isFinite(v)||isNaN(v)) return '—';return (v*100).toFixed(d)+'%';}
+function varPct(cur,prev){if(!prev||prev===0) return null;return (cur-prev)/Math.abs(prev);}
+function deltaStr(v){if(v===null||isNaN(v)) return '';var s=v>=0?'▲ +':'▼ ';return s+(Math.abs(v)*100).toFixed(1)+'% vs N-1';}
+function clrCls(v,inv){if(v===null) return 'flat';return (inv?v<0:v>0)?'up':'down';}
+function destroyChart(id){if(charts[id]){charts[id].destroy();delete charts[id];}}
+
+// ── FEC PARSER ─────────────────────────────────────────────
+function detectSep(line){if(line.indexOf('|')>=0) return '|';if(line.indexOf('\t')>=0) return '\t';return ';';}
+function parseFEC(text){
+  var lines=text.split(/\r?\n/).filter(function(l){return l.trim();});
+  if(!lines.length) return null;
+  var sep=detectSep(lines[0]);
+  var headers=lines[0].split(sep).map(function(h){return h.trim().toLowerCase().replace(/"/g,'');});
+  plog('Séparateur: "'+(sep==='|'?'pipe':sep==='\t'?'tab':sep)+'" — '+headers.length+' colonnes','ok');
+  var hi={};
+  var aliases={
+    compte:['comptenum','compte_num','numcompte','accountnum','compte'],
+    debit:['debit','montantdebit','debit_montant'],
+    credit:['credit','montantcredit','credit_montant'],
+    montant:['montant','amount'],
+    sens:['sens','debitcredit','dc']
+  };
+  Object.keys(aliases).forEach(function(k){
+    var arr=aliases[k];
+    var idx=-1;
+    for(var i=0;i<arr.length;i++){var p=headers.indexOf(arr[i]);if(p>=0){idx=p;break;}}
+    if(idx>=0) hi[k]=idx;
+  });
+  if(hi.compte===undefined){plog('Colonne compte introuvable','err');return null;}
+  var soldes={};var rows=0;
+  for(var i=1;i<lines.length;i++){
+    var cols=lines[i].split(sep).map(function(c){return c.trim().replace(/"/g,'');});
+    if(cols.length<3) continue;
+    var cpt=(cols[hi.compte]||'').replace(/\s/g,'');
+    if(!cpt||!/^\d/.test(cpt)) continue;
+    var deb=0,cred=0;
+    if(hi.debit!==undefined&&hi.credit!==undefined){
+      deb=parseFloat((cols[hi.debit]||'0').replace(',','.'))||0;
+      cred=parseFloat((cols[hi.credit]||'0').replace(',','.'))||0;
+    } else if(hi.montant!==undefined&&hi.sens!==undefined){
+      var m=parseFloat((cols[hi.montant]||'0').replace(',','.'))||0;
+      var sv=(cols[hi.sens]||'').toUpperCase();
+      if(sv==='D'||sv==='1') deb=m; else cred=m;
+    }
+    if(!soldes[cpt]) soldes[cpt]={d:0,c:0};
+    soldes[cpt].d+=deb;soldes[cpt].c+=cred;rows++;
+  }
+  plog(rows+' lignes — '+Object.keys(soldes).length+' comptes','ok');
+  return soldes;
+}
+function soldeRaw(soldes,prefixes){
+  var d=0,c=0,matched=[];
+  Object.keys(soldes).forEach(function(cpt){
+    var v=soldes[cpt];
+    var ok=false;
+    for(var i=0;i<prefixes.length;i++){if(cpt.startsWith(prefixes[i])){ok=true;break;}}
+    if(ok){d+=v.d;c+=v.c;if(Math.abs(v.d-v.c)>1) matched.push({cpt:cpt,d:v.d,c:v.c,net:v.d-v.c});}
+  });
+  return {d:d,c:c,debiteur:d-c,crediteur:c-d,matched:matched};
+}
+
+// ── BALANCE PARSER ─────────────────────────────────────────
+function normalizeH(h){
+  return h.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^a-z0-9]/g,'');
+}
+function parseBalance(text){
+  var lines=text.split(/\r?\n/).filter(function(l){return l.trim();});
+  if(!lines.length){plog('Balance: fichier vide','err');return null;}
+  var sep=detectSep(lines[0]);
+  var rawH=lines[0].split(sep).map(function(h){return h.trim().replace(/"/g,'').replace(/\r/g,'');});
+  var headers=rawH.map(normalizeH);
+  plog('Balance — colonnes: '+rawH.join(' | '),'ok');
+
+  // Colonne compte
+  var hi_cpt=-1;
+  ['compte','numcompte','ncompte','numero','comptenum','code'].forEach(function(k){
+    if(hi_cpt<0) headers.forEach(function(h,i){if(hi_cpt<0&&h.indexOf(k)>=0) hi_cpt=i;});
+  });
+  if(hi_cpt<0) hi_cpt=0;
+
+  // Colonnes solde final (priorité 1 : "solde" + "deb"/"cred")
+  var hi_sd=-1,hi_sc=-1;
+  headers.forEach(function(h,i){
+    var hasSolde=h.indexOf('solde')>=0;
+    if(hasSolde&&h.indexOf('deb')>=0&&hi_sd<0) hi_sd=i;
+    if(hasSolde&&h.indexOf('cred')>=0&&hi_sc<0) hi_sc=i;
+  });
+
+  // Priorité 2 : dernière colonne "debit" / "credit" (cas balance avec mvts + soldes)
+  if(hi_sd<0||hi_sc<0){
+    var lastD=-1,lastC=-1;
+    headers.forEach(function(h,i){
+      if(h.indexOf('debit')>=0||h==='d') lastD=i;
+      if(h.indexOf('credit')>=0||h==='c') lastC=i;
+    });
+    if(hi_sd<0) hi_sd=lastD;
+    if(hi_sc<0) hi_sc=lastC;
+  }
+
+  // Priorité 3 : colonne "solde" unique signée
+  var hi_solde=-1;
+  if(hi_sd<0&&hi_sc<0){
+    headers.forEach(function(h,i){if(h==='solde'&&hi_solde<0) hi_solde=i;});
+  }
+
+  if(hi_sd<0&&hi_sc<0&&hi_solde<0){
+    plog('Balance: colonnes solde non détectées — headers: '+headers.join('|'),'err');
+    return null;
+  }
+  plog('Balance: col_cpt='+hi_cpt+(hi_sd>=0?', soldeDeb='+hi_sd:'')+(hi_sc>=0?', soldeCred='+hi_sc:'')+(hi_solde>=0?', solde='+hi_solde:''),'ok');
+
+  function parseNum(s){return parseFloat((s||'0').replace(/\s/g,'').replace(',','.').replace(/[^\d.-]/g,''))||0;}
+  var soldes={};var rows=0;
+  for(var i=1;i<lines.length;i++){
+    var cols=lines[i].split(sep).map(function(c){return c.trim().replace(/"/g,'').replace(/\r/g,'');});
+    if(cols.length<2) continue;
+    var cpt=(cols[hi_cpt]||'').replace(/[\s.]/g,'');
+    if(!cpt||!/^\d/.test(cpt)) continue;
+    var sd=0,sc=0;
+    if(hi_sd>=0) sd=parseNum(cols[hi_sd]);
+    if(hi_sc>=0) sc=parseNum(cols[hi_sc]);
+    if(hi_solde>=0){var net=parseNum(cols[hi_solde]);if(net>=0) sd=net; else sc=-net;}
+    if(sd===0&&sc===0) continue;
+    soldes[cpt]={d:Math.abs(sd),c:Math.abs(sc)};
+    rows++;
+  }
+  if(!rows){plog('Balance: aucun compte chargé — format non reconnu ?','warn');return null;}
+  var totD=0,totC=0;
+  Object.keys(soldes).forEach(function(k){totD+=soldes[k].d;totC+=soldes[k].c;});
+  plog('Balance: '+rows+' comptes — Σ Débit='+fmtK(totD)+' / Σ Crédit='+fmtK(totC),'ok');
+  return soldes;
+}
+function parseBalanceXLSX(ab){
+  try{
+    var wb=XLSX.read(new Uint8Array(ab),{type:'array'});
+    var ws=wb.Sheets[wb.SheetNames[0]];
+    var csv=XLSX.utils.sheet_to_csv(ws,{FS:'|'});
+    return parseBalance(csv);
+  }catch(e){plog('Balance XLSX: '+e.message,'err');return null;}
+}
+function loadBalance(input,ex){
+  var file=input.files[0];if(!file) return;
+  var card=document.getElementById('bcard-'+ex);
+  var status=document.getElementById('bstatus-'+ex);
+  status.textContent='Lecture…';
+  plog('--- Balance '+ex.toUpperCase()+' : '+file.name+' ---');
+  var isXLSX=/\.xlsx?$/i.test(file.name);
+  var reader=new FileReader();
+  reader.onload=function(e){
+    try{
+      var soldes=isXLSX?parseBalanceXLSX(e.target.result):parseBalance(e.target.result);
+      if(!soldes){status.textContent='Format non reconnu';return;}
+      balanceData[ex]=soldes;card.classList.add('loaded');card.onclick=null;
+      status.textContent='✓ '+Object.keys(soldes).length+' comptes chargés';
+      var rm=document.createElement('button');rm.className='fec-remove';rm.textContent='×';
+      rm.onclick=function(ev){
+        ev.stopPropagation();balanceData[ex]=null;card.classList.remove('loaded');
+        card.onclick=function(){triggerFile('bal-'+ex);};
+        status.textContent='Cliquer pour charger';rm.remove();
+        document.getElementById('bal-'+ex).value='';
+      };
+      card.appendChild(rm);
+    }catch(err){plog('Erreur balance: '+err.message,'err');}
+  };
+  if(isXLSX) reader.readAsArrayBuffer(file);
+  else reader.readAsText(file,'UTF-8');
+}
+
+// ── MERGE FEC + BALANCE ─────────────────────────────────────
+// Pour les classes 1-5 (bilan), la balance est source de vérité.
+// Pour les classes 6-7 (résultat), on conserve les cumuls FEC.
+function mergeWithBalance(fecSoldes,balSoldes){
+  if(!balSoldes) return fecSoldes;
+  var merged={};
+  Object.keys(fecSoldes).forEach(function(cpt){merged[cpt]=fecSoldes[cpt];});
+  Object.keys(balSoldes).forEach(function(cpt){
+    var cls=cpt[0];
+    if(cls>='1'&&cls<='5') merged[cpt]=balSoldes[cpt];
+  });
+  return merged;
+}
+
+// ── FINANCIALS ─────────────────────────────────────────────
+function buildFinancials(soldes){
+  function raw(pfx){return soldeRaw(soldes,pfx);}
+  function deb(pfx){return Math.max(0,raw(pfx).debiteur);}
+  function cred(pfx){return Math.max(0,raw(pfx).crediteur);}
+  function credS(pfx){return raw(pfx).crediteur;}
+
+  var immoBrut=raw(['20','21','22','23','24','25','26','27']).d;
+  var amort=cred(['28','29']);
+  var immoNettes=Math.max(0,immoBrut-amort);
+  var titresBrut=raw(['261','262','263','264','265','266','267','271','272','273','274','275','276']).d;
+  var titresPartic=Math.max(0,titresBrut-cred(['296','297']));
+  var stocksBrut=raw(['31','32','33','34','35','36','37']).d;
+  var stocks=Math.max(0,stocksBrut-cred(['39']));
+  var creancesCli=Math.max(0,raw(['411','412','413','416','417','418']).debiteur-cred(['491']));
+  var autresCreances=Math.max(0,raw(['409','425','445','451','455','458','465','467','468','44566','44567','44580','44583','44586']).debiteur);
+  var VMP=Math.max(0,raw(['50']).debiteur-cred(['59']));
+  var disponibilites=Math.max(0,raw(['512','514','515','516','517','518','53','54','58']).debiteur);
+  var tresorerie=disponibilites+VMP;
+  var totalActifImmo=immoNettes;
+  var totalActifCirc=stocks+creancesCli+autresCreances+tresorerie;
+  var totalActif=totalActifImmo+totalActifCirc;
+
+  var capitalSocial=cred(['101','102','103','108']);
+  var primes=cred(['104','105']);
+  var reserves=cred(['106','107']);
+  var reportNouvel=credS(['11']);
+  var rnExercice=credS(['12']);
+  var autresCP=cred(['13','14']);
+  var capitauxPropres=capitalSocial+primes+reserves+reportNouvel+rnExercice+autresCP;
+  var provisions=cred(['15']);
+  var decouverts=cred(['519']);
+  var dettesFin=cred(['16'])+decouverts;
+  var avancesClients=cred(['419']);
+  var dettesFournisseurs=cred(['401','403','404','405','408']);
+  var dettesPersonnel=cred(['421','422','424','425','426','427','428']);
+  var dettesSociales=cred(['431','437','438']);
+  var dettesFiscales=cred(['441','442','443','444','445','447','448']);
+  var autresDettes=cred(['451','455','458','464','465','467','468','487']);
+  var dettesExp=avancesClients+dettesFournisseurs+dettesPersonnel+dettesSociales+dettesFiscales+autresDettes;
+  var totalPassif=capitauxPropres+provisions+dettesFin+dettesExp;
+
+  var ventesMarch=cred(['707']);
+  var ventesProduits=cred(['701','702','703','704','705','706','708']);
+  var CA_HT=ventesMarch+ventesProduits;
+  var varStocksProd=credS(['713']);
+  var prodImmo=cred(['72']);
+  var subvExpl=cred(['74']);
+  var autresProdGest=cred(['75']);
+  var reprises=cred(['781','791']);
+  var achatsMarch=raw(['607']).d;
+  var varStocksMarch=raw(['6037']).d-cred(['6037']);
+  var achatsMatPrem=raw(['601','602','603']).d;
+  var varStocksMat=raw(['6031','6032']).d-cred(['6031','6032']);
+  var autresAchatsMP=raw(['604','605','606','608']).d;
+  var chargesExternes=raw(['61','62']).d;
+  var rrrObtenus=cred(['609','619','629']);
+  var totalAchatsCA=achatsMarch+varStocksMarch+achatsMatPrem+varStocksMat+autresAchatsMP+chargesExternes-rrrObtenus;
+  var VA=CA_HT+varStocksProd+prodImmo-totalAchatsCA;
+  var impotsTaxes=raw(['63']).d;
+  var chargesPerso=raw(['64']).d-cred(['649']);
+  var EBE=VA+subvExpl-impotsTaxes-chargesPerso;
+  var autresChargesGest=raw(['65']).d;
+  var dotAmort=raw(['681','687']).d;
+  var REX=EBE+autresProdGest+reprises-autresChargesGest-dotAmort;
+  var prodFinanciers=cred(['76','786','796']);
+  var chargesFinancieres=raw(['66','686']).d;
+  var resultatFin=prodFinanciers-chargesFinancieres;
+  var resultatCourant=REX+resultatFin;
+  var prodExcep=cred(['77','787','797']);
+  var chargesExcep=raw(['67','687']).d;
+  var resultatExcep=prodExcep-chargesExcep;
+  var participation=raw(['691']).d;
+  var IS=raw(['695','696','697','698','699']).d-cred(['699']);
+  var RN_calc=resultatCourant+resultatExcep-participation-IS;
+  var RN=Math.abs(rnExercice)>100?rnExercice:RN_calc;
+  var margeCom=(ventesMarch+varStocksMarch)-achatsMarch;
+  var prodExercice=CA_HT+varStocksProd+prodImmo;
+  var FRNG=capitauxPropres+provisions+dettesFin-totalActifImmo;
+  var BFR=stocks+creancesCli+autresCreances-dettesExp;
+  var TN=FRNG-BFR;
+  var endettementNet=dettesFin-tresorerie;
+
+  return {
+    immoNettes:immoNettes,titresPartic:titresPartic,stocks:stocks,creancesCli:creancesCli,
+    autresCreances:autresCreances,VMP:VMP,disponibilites:disponibilites,tresorerie:tresorerie,
+    totalActifImmo:totalActifImmo,totalActifCirc:totalActifCirc,totalActif:totalActif,
+    capitalSocial:capitalSocial,primes:primes,reserves:reserves,reportNouvel:reportNouvel,
+    rnExercice:rnExercice,capitauxPropres:capitauxPropres,autresCP:autresCP,
+    provisions:provisions,dettesFin:dettesFin,avancesClients:avancesClients,dettesExp:dettesExp,dettesFournisseurs:dettesFournisseurs,
+    dettesPersonnel:dettesPersonnel,dettesSociales:dettesSociales,dettesFiscales:dettesFiscales,
+    autresDettes:autresDettes,totalPassif:totalPassif,
+    CA:CA_HT,ventesMarch:ventesMarch,ventesProduits:ventesProduits,varStocksProd:varStocksProd,
+    prodImmo:prodImmo,subvExpl:subvExpl,autresProdGest:autresProdGest,reprises:reprises,
+    margeCom:margeCom,prodExercice:prodExercice,totalAchatsCA:totalAchatsCA,
+    achatsMarch:achatsMarch,achatsMatPrem:achatsMatPrem,chargesExternes:chargesExternes,
+    varStocksMarch:varStocksMarch,varStocksMat:varStocksMat,
+    VA:VA,impotsTaxes:impotsTaxes,chargesPerso:chargesPerso,dotAmort:dotAmort,
+    autresChargesGest:autresChargesGest,EBE:EBE,REX:REX,prodFinanciers:prodFinanciers,
+    chargesFinancieres:chargesFinancieres,resultatFin:resultatFin,resultatCourant:resultatCourant,
+    prodExcep:prodExcep,chargesExcep:chargesExcep,resultatExcep:resultatExcep,
+    participation:participation,IS:IS,RN:RN,FRNG:FRNG,BFR:BFR,TN:TN,endettementNet:endettementNet,
+    margeEBE:CA_HT?EBE/CA_HT:0,margeREX:CA_HT?REX/CA_HT:0,margeNette:CA_HT?RN/CA_HT:0,margeVA:CA_HT?VA/CA_HT:0,
+    ROE:capitauxPropres?RN/capitauxPropres:0,ROA:totalActif?RN/totalActif:0,
+    endettement:capitauxPropres?dettesFin/capitauxPropres:0,
+    autonomie:totalPassif?capitauxPropres/totalPassif:0,
+    liquidGen:dettesExp?(stocks+creancesCli+tresorerie)/dettesExp:0,
+    couvertInterets:chargesFinancieres?EBE/chargesFinancieres:0,
+    detteNetteEBE:EBE?endettementNet/EBE:0,
+    delaiCreances:CA_HT?creancesCli/CA_HT*365:0
+  };
+}
+
+// ── FILE LOADING ───────────────────────────────────────────
+function loadFEC(input,ex){
+  var file=input.files[0];if(!file) return;
+  var card=document.getElementById('card-'+ex);
+  var status=document.getElementById('status-'+ex);
+  status.textContent='Lecture…';
+  document.getElementById('parseLog').innerHTML='';
+  plog('--- FEC '+ex.toUpperCase()+' : '+file.name+' ---');
+  var reader=new FileReader();
+  reader.onload=function(e){
+    try{
+      var soldes=parseFEC(e.target.result);
+      if(!soldes){status.textContent='Erreur';return;}
+      fecData[ex]=soldes;card.classList.add('loaded');card.onclick=null;
+      status.textContent='✓ '+file.name+' ('+Object.keys(soldes).length+' cptes)';
+      var rm=document.createElement('button');rm.className='fec-remove';rm.textContent='×';
+      rm.onclick=function(ev){
+        ev.stopPropagation();fecData[ex]=null;card.classList.remove('loaded');
+        card.onclick=function(){triggerFile('fec-'+ex);};
+        status.textContent='Cliquer pour charger';rm.remove();
+        document.getElementById('fec-'+ex).value='';checkReady();
+      };
+      card.appendChild(rm);checkReady();
+    }catch(err){plog('Erreur: '+err.message,'err');}
+  };
+  reader.readAsText(file,'UTF-8');
+}
+function checkReady(){document.getElementById('btnGenerate').disabled=!fecData.n;}
+
+// ── DEMO ───────────────────────────────────────────────────
+function loadDemo(){
+  plog('--- Chargement démo GF ---','ok');
+  function mkS(d){
+    var s={};
+    function set(c,db,cr){if(!s[c])s[c]={d:0,c:0};s[c].d+=db;s[c].c+=cr;}
+    set('70311000',0,d.CA*0.55);set('70395100',0,d.CA*0.25);set('70395200',0,d.CA*0.12);set('70600000',0,d.CA*0.08);
+    if(d.varStock>0)set('71376000',0,d.varStock);else set('71376000',-d.varStock,0);
+    set('72200000',0,d.prodImmo);set('74500000',0,d.subv);set('75800000',0,d.autresProd);
+    set('60131000',d.CA*0.04,0);set('60170100',d.CA*0.05,0);set('60180000',d.CA*0.02,0);
+    set('60512000',d.CA*0.19,0);set('61321000',d.CA*0.027,0);set('62261000',d.CA*0.008,0);set('60620000',d.CA*0.02,0);
+    set('63520000',d.impots,0);set('64111000',d.salaires,0);set('64500000',d.chargesSoc,0);
+    set('66110000',d.intEmpr,0);set('66800100',d.autresInt,0);set('68110000',d.amort,0);
+    set('67880000',d.chargesExcep,0);
+    if(d.IS>0)set('69900000',0,d.IS);else set('69900000',-d.IS,0);
+    set('21100000',d.plantations,0);set('21111000',d.terrains,0);set('21311000',d.constr,0);set('21510000',d.materiel,0);
+    set('28110000',0,d.amortCumul);set('26100000',d.titres,0);set('27100000',d.autresTitres,0);
+    set('37600000',d.stockVins,0);set('34100000',d.avCulture,0);set('37110000',d.stockMS,0);
+    set('41100000',d.creancesCli,0);set('41810000',d.FAE,0);set('44566000',d.TVA,0);set('512000',d.trezo,0);
+    set('10100000',0,d.capital);set('10420000',0,d.primes);set('10680000',0,d.reserves);set('10611000',0,33224);
+    set('13100000',0,d.subvInv);set('13900000',d.subvVir,0);set('15180000',0,d.provisions);
+    set('16400075',0,d.emprunts);set('41910000',0,d.avClients);
+    set('40100000',0,d.fournisseurs);set('42100000',0,d.dettePerso);set('43100000',0,d.dettesSoc);
+    set('44556000',0,d.TVApayer);set('46730000',0,d.autresDettes);
+    if(d.RN>0)set('12000000',0,d.RN);else set('12000000',-d.RN,0);
+    return s;
+  }
+  fecData.n=mkS({CA:9242670,varStock:291850,prodImmo:161005,subv:204131,autresProd:269505,impots:94031,salaires:2183754,chargesSoc:643732,intEmpr:384767,autresInt:431065,amort:806541,chargesExcep:184796,IS:0,plantations:6690485,terrains:7109821,constr:4225+1552975+2085603+392305,materiel:587574+799678+585778,amortCumul:3464055+218302+339478+490036,titres:10040,autresTitres:14460,stockVins:11563783,avCulture:669724,stockMS:151113+80702,creancesCli:3708700,FAE:683490+25907+179903+1812,TVA:432546+97313,trezo:4459,capital:332244,primes:1018360,reserves:3233811,subvInv:2764356,subvVir:1236505,provisions:106059,emprunts:19771709,avClients:443607,fournisseurs:4190276+255723+22154+93669,dettePerso:198993+177808,dettesSoc:432491+27624+33238+56952,TVApayer:596817+99593,autresDettes:2529322+360500,RN:-756418});
+  fecData.n1=mkS({CA:7561096,varStock:2032623,prodImmo:312902,subv:54766,autresProd:98,impots:88113,salaires:2068283,chargesSoc:646998,intEmpr:344241,autresInt:319207,amort:818039,chargesExcep:964610,IS:-846848,plantations:6356692,terrains:7109821,constr:1552975+2085603+392305,materiel:564574+799678+585059,amortCumul:3220860+182354+315393+433988,titres:10040,autresTitres:14340,stockVins:11370028,avCulture:571628,stockMS:269874+86839,creancesCli:3035221,FAE:2339512,TVA:610914+30964,trezo:13178,capital:332244,primes:1018360,reserves:2876190,subvInv:2577839,subvVir:1105348,provisions:106059,emprunts:15441160,avClients:3125128,fournisseurs:6081398+589269,dettePerso:150836+177801,dettesSoc:757613+23455+33087+57608,TVApayer:496447+351041,autresDettes:2671067+360500,RN:357621});
+  document.getElementById('nomEntite').value='SCEA Gonfrier Frères';
+  document.getElementById('exerciceN').value='31/12/2025';
+  document.getElementById('secteur').value='Viticole / Agricole';
+  ['n2','n1','n'].forEach(function(ex){
+    if(fecData[ex]){
+      var card=document.getElementById('card-'+ex);card.classList.add('loaded');card.onclick=null;
+      document.getElementById('status-'+ex).textContent='✓ Données démo chargées';
+    }
+  });
+  plog('Données démo chargées','ok');checkReady();generateAnalysis();
+}
+
+// ── GENERATE ───────────────────────────────────────────────
+function generateAnalysis(){
+  if(!fecData.n){alert('FEC N obligatoire.');return;}
+  plog('--- Construction états financiers ---','ok');
+  var snN=mergeWithBalance(fecData.n,balanceData.n);
+  var snN1=fecData.n1?mergeWithBalance(fecData.n1,balanceData.n1):null;
+  var snN2=fecData.n2?mergeWithBalance(fecData.n2,balanceData.n2):null;
+  var Fn=buildFinancials(snN);
+  var Fn1=snN1?buildFinancials(snN1):null;
+  var Fn2=snN2?buildFinancials(snN2):null;
+  plog('CA='+fmt(Fn.CA)+' EBE='+fmt(Fn.EBE)+' RN='+fmt(Fn.RN),'ok');
+  buildDiagnostic(fecData.n,Fn,balanceData.n);
+  var annees=[Fn2?'N-2':null,Fn1?'N-1':null,'N'].filter(function(x){return x!==null;});
+  var series=[Fn2,Fn1,Fn].filter(function(x){return x!==null;});
+  D={annees:annees,series:series,Fn:Fn,Fn1:Fn1,Fn2:Fn2,soldesN:snN,soldesN1:snN1,soldesN2:snN2};
+  var entite=document.getElementById('nomEntite').value||'—';
+  var exN=document.getElementById('exerciceN').value||'—';
+  document.getElementById('badgeEntite').textContent='Entité : '+entite;
+  document.getElementById('badgeEx').textContent='N : '+exN;
+  document.getElementById('ef-year').textContent='N : '+exN;
+  document.getElementById('yd1').textContent='N : '+exN;
+  ['etats','seuils','synthese','bilan','cr','ratios','risques','ia','pdm'].forEach(function(id){
+    document.getElementById('tab-'+id).classList.remove('disabled');
+  });
+  buildEtatsFinanciers();buildSeuils();buildSynthese();buildBilan();buildCR();buildRatios();buildRisques();
+  setTimeout(function(){genAI('all');},400);
+  showTab('etats');
+}
+
+// ── ÉTATS FINANCIERS ───────────────────────────────────────
+function efRow(indent,label,vN,vN1,cls,baseCA,prefixes){
+  cls=cls||'r-detail';
+  var n=vN!==null&&vN!==undefined?fmtK(vN):'';
+  var n1val=vN1!==null&&vN1!==undefined?fmtK(vN1):'';
+  var pN=baseCA&&vN!==null?((vN/baseCA)*100).toFixed(0)+'%':'';
+  var pN1=baseCA&&vN1!==null?((vN1/baseCA)*100).toFixed(0)+'%':'';
+  var varHtml='<td class="num">—</td><td class="num">—</td>';
+  if(vN!==null&&vN!==undefined&&vN1!==null&&vN1!==undefined){
+    var diff=vN-vN1;
+    var vp=vN1?((diff/Math.abs(vN1))*100).toFixed(0)+'%':'—';
+    var c2=diff>0?'var-pos':diff<0?'var-neg':'';
+    varHtml='<td class="num '+c2+'">'+(diff>0?'+':'')+fmtK(diff)+'</td><td class="num '+c2+'">'+(diff>0?'+':'')+vp+'</td>';
+  }
+  var pad=indent*16;
+  var rid='efr-'+(++efRowId);
+  var isSec=(cls==='r-section'||cls==='r-total');
+  var btn='';
+  if(prefixes&&!isSec){
+    btn='<button class="detail-btn" onclick="toggleEFDetail(\''+rid+'\',\''+prefixes.join(',')+'\',this)">▶ détail</button>';
+  }
+  return '<tr class="'+cls+'"><td style="padding-left:'+pad+'px">'+label+btn+'</td>'
+    +'<td class="num">'+n+'</td><td class="num" style="color:var(--gray-m)">'+pN+'</td>'
+    +'<td class="num">'+n1val+'</td><td class="num" style="color:var(--gray-m)">'+pN1+'</td>'
+    +varHtml+'</tr>'
+    +'<tbody id="'+rid+'" style="display:none"></tbody>';
+}
+
+function toggleEFDetail(id,prefixStr,btn){
+  var tbody=document.getElementById(id);
+  if(!tbody) return;
+  if(tbody.style.display!=='none'){tbody.style.display='none';btn.textContent='▶ détail';return;}
+  if(tbody.innerHTML){tbody.style.display='';btn.textContent='▼ replier';return;}
+  var prefixes=prefixStr.split(',');
+  var aN={};var aN1={};
+  var srcN=D&&D.soldesN?D.soldesN:fecData.n;
+  var srcN1=D&&D.soldesN1?D.soldesN1:fecData.n1;
+  if(srcN){
+    Object.keys(srcN).forEach(function(cpt){
+      var ok=false;for(var i=0;i<prefixes.length;i++){if(cpt.startsWith(prefixes[i])){ok=true;break;}}
+      if(ok) aN[cpt]=srcN[cpt];
+    });
+  }
+  if(srcN1){
+    Object.keys(srcN1).forEach(function(cpt){
+      var ok=false;for(var i=0;i<prefixes.length;i++){if(cpt.startsWith(prefixes[i])){ok=true;break;}}
+      if(ok) aN1[cpt]=srcN1[cpt];
+    });
+  }
+  var allCpts=Object.keys(Object.assign({},aN,aN1)).sort();
+  if(!allCpts.length){
+    tbody.innerHTML='<tr><td colspan="7" style="padding:6px 20px;font-size:11px;color:var(--gray-m);font-style:italic">Aucun compte trouvé</td></tr>';
+    tbody.style.display='';btn.textContent='▼ replier';return;
+  }
+  var rows='';
+  allCpts.forEach(function(cpt){
+    var vN=aN[cpt];var vN1=aN1[cpt];
+    var netN=vN?(vN.d-vN.c):null;var netN1=vN1?(vN1.d-vN1.c):null;
+    if((netN===null||Math.abs(netN)<1)&&(netN1===null||Math.abs(netN1)<1)) return;
+    var diff=netN!==null&&netN1!==null?netN-netN1:null;
+    var vp=diff!==null&&netN1?((diff/Math.abs(netN1))*100).toFixed(0)+'%':'—';
+    var c2=diff===null?'':(diff>0?'var-pos':'var-neg');
+    rows+='<tr class="detail-row">'
+      +'<td class="detail-row" style="padding:3px 10px 3px 32px;font-size:11px"><span class="cpt-badge">'+cpt+'</span></td>'
+      +'<td class="num" style="font-size:11px;padding:3px 10px">'+(netN!==null?fmtK(netN):'')+'</td>'
+      +'<td style="padding:3px 10px"></td>'
+      +'<td class="num" style="font-size:11px;padding:3px 10px">'+(netN1!==null?fmtK(netN1):'')+'</td>'
+      +'<td style="padding:3px 10px"></td>'
+      +'<td class="num '+c2+'" style="font-size:11px;padding:3px 10px">'+(diff!==null?(diff>0?'+':'')+fmtK(diff):'')+'</td>'
+      +'<td class="num '+c2+'" style="font-size:11px;padding:3px 10px">'+(diff!==null?(diff>0?'+':'')+vp:'')+'</td>'
+      +'</tr>';
+  });
+  tbody.innerHTML=rows||'<tr><td colspan="7" style="padding:6px 20px;font-size:11px;color:var(--gray-m);font-style:italic">Aucun mouvement significatif</td></tr>';
+  tbody.style.display='';btn.textContent='▼ replier';
+}
+
+function buildEtatsFinanciers(){
+  var Fn=D.Fn;var n1=D.Fn1;
+  efRowId=0;
+  var exN=document.getElementById('exerciceN').value||'N';
+  var exN1=n1?'N-1':'N-1';
+  var hdr='<table class="ef-table"><thead><tr>'
+    +'<th style="text-align:left;width:40%">Libellé</th>'
+    +'<th>'+exN+'</th><th>%</th><th>'+exN1+'</th><th>%</th>'
+    +'<th>Variation €</th><th>Variation %</th></tr></thead><tbody>';
+
+  // BILAN ACTIF
+  var ba=hdr;
+  ba+=efRow(0,'ACTIF IMMOBILISÉ NET',Fn.totalActifImmo,n1?n1.totalActifImmo:null,'r-section',null,null);
+  ba+=efRow(1,'Immobilisations incorporelles',Fn.immoNettes*0.004,n1?n1.immoNettes*0.004:null,'r-detail',null,['200','201','203','205','206','207','208','280','281']);
+  ba+=efRow(1,'Immobilisations corporelles',Fn.immoNettes-Fn.titresPartic,n1?n1.immoNettes-n1.titresPartic:null,'r-detail',null,['211','212','213','214','215','218','231','232','238','281','282','283','284','285','286','287','288']);
+  ba+=efRow(1,'Immobilisations financières',Fn.titresPartic,n1?n1.titresPartic:null,'r-detail',null,['261','262','263','264','265','266','267','271','272','273','274','275','276','296','297']);
+  ba+=efRow(0,'ACTIF CIRCULANT NET',Fn.totalActifCirc,n1?n1.totalActifCirc:null,'r-section',null,null);
+  ba+=efRow(1,'Stocks et en-cours net',Fn.stocks,n1?n1.stocks:null,'r-detail',null,['31','32','33','34','35','36','37','39']);
+  ba+=efRow(1,'Créances clients et cptes rattachés',Fn.creancesCli,n1?n1.creancesCli:null,'r-detail',null,['411','412','413','416','417','418','491']);
+  ba+=efRow(1,'Autres créances',Fn.autresCreances,n1?n1.autresCreances:null,'r-detail',null,['409','425','445','451','455','458','465','467','468','44566','44567','44580','44583','44586']);
+  ba+=efRow(1,'Disponibilités & VMP',Fn.tresorerie,n1?n1.tresorerie:null,'r-detail',null,['50','512','514','515','516','517','518','519','53','54','58','59']);
+  ba+=efRow(0,'TOTAL ACTIF',Fn.totalActif,n1?n1.totalActif:null,'r-total',null,null);
+  ba+='</tbody></table>';
+  document.getElementById('efBilanActif').innerHTML=ba;
+
+  // BILAN PASSIF
+  efRowId=0;
+  var bp=hdr;
+  bp+=efRow(0,'CAPITAUX PROPRES',Fn.capitauxPropres,n1?n1.capitauxPropres:null,'r-section',null,null);
+  bp+=efRow(1,'Capital social',Fn.capitalSocial,n1?n1.capitalSocial:null,'r-detail',null,['101','102','103','108']);
+  bp+=efRow(1,'Primes & réserves',Fn.primes+Fn.reserves,n1?n1.primes+n1.reserves:null,'r-detail',null,['104','105','106','107']);
+  bp+=efRow(1,'Report à nouveau',Fn.reportNouvel,n1?n1.reportNouvel:null,'r-detail',null,['11']);
+  bp+=efRow(1,'Résultat de l\'exercice',Fn.RN,n1?n1.RN:null,'r-detail',null,['12']);
+  bp+=efRow(1,'Subventions & prov. réglementées',Fn.autresCP,n1?n1.autresCP:null,'r-detail',null,['13','14']);
+  bp+=efRow(0,'PROVISIONS POUR RISQUES ET CHARGES',Fn.provisions,n1?n1.provisions:null,'r-sous-total',null,['15']);
+  bp+=efRow(0,'DETTES',Fn.dettesFin+Fn.dettesExp,n1?n1.dettesFin+n1.dettesExp:null,'r-section',null,null);
+  bp+=efRow(1,'Dettes financières',Fn.dettesFin,n1?n1.dettesFin:null,'r-detail',null,['16','519']);
+  bp+=efRow(1,'Avances & acomptes reçus clients',Fn.avancesClients,n1?n1.avancesClients:null,'r-detail',null,['419']);
+  bp+=efRow(1,'Dettes fournisseurs',Fn.dettesFournisseurs,n1?n1.dettesFournisseurs:null,'r-detail',null,['401','403','404','405','408']);
+  bp+=efRow(1,'Dettes fiscales et sociales',Fn.dettesSociales+Fn.dettesFiscales+Fn.dettesPersonnel,n1?n1.dettesSociales+n1.dettesFiscales+n1.dettesPersonnel:null,'r-detail',null,['421','422','424','425','426','427','428','431','437','438','441','442','443','444','445','447','448']);
+  bp+=efRow(1,'Autres dettes',Fn.autresDettes,n1?n1.autresDettes:null,'r-detail',null,['451','455','458','464','465','467','468','487']);
+  bp+=efRow(0,'TOTAL PASSIF',Fn.totalPassif,n1?n1.totalPassif:null,'r-total',null,null);
+  bp+='</tbody></table>';
+  document.getElementById('efBilanPassif').innerHTML=bp;
+
+  // CR
+  efRowId=0;
+  var CA=Fn.CA;
+  var cr=hdr;
+  cr+=efRow(0,'PRODUITS D\'EXPLOITATION',Fn.CA+Fn.varStocksProd+Fn.prodImmo+Fn.subvExpl+Fn.reprises+Fn.autresProdGest,n1?n1.CA+n1.varStocksProd+n1.prodImmo+n1.subvExpl+n1.reprises+n1.autresProdGest:null,'r-section',null,null);
+  cr+=efRow(1,'Ventes de marchandises',Fn.ventesMarch,n1?n1.ventesMarch:null,'r-detail',CA,['707']);
+  cr+=efRow(1,'Production vendue biens & services',Fn.ventesProduits,n1?n1.ventesProduits:null,'r-detail',CA,['701','702','703','704','705','706','708']);
+  cr+=efRow(1,'Chiffre d\'affaires net',Fn.CA,n1?n1.CA:null,'r-sous-total',CA,null);
+  cr+=efRow(1,'Production stockée',Fn.varStocksProd,n1?n1.varStocksProd:null,'r-detail',CA,['713','711','712']);
+  cr+=efRow(1,'Production immobilisée',Fn.prodImmo,n1?n1.prodImmo:null,'r-detail',CA,['72']);
+  cr+=efRow(1,'Subventions d\'exploitation',Fn.subvExpl,n1?n1.subvExpl:null,'r-detail',CA,['74']);
+  cr+=efRow(1,'Reprises & transferts de charges',Fn.reprises,n1?n1.reprises:null,'r-detail',CA,['781','791']);
+  cr+=efRow(1,'Autres produits',Fn.autresProdGest,n1?n1.autresProdGest:null,'r-detail',CA,['75']);
+  cr+=efRow(0,'CHARGES D\'EXPLOITATION',Fn.totalAchatsCA+Fn.impotsTaxes+Fn.chargesPerso+Fn.dotAmort+Fn.autresChargesGest,n1?n1.totalAchatsCA+n1.impotsTaxes+n1.chargesPerso+n1.dotAmort+n1.autresChargesGest:null,'r-section',null,null);
+  cr+=efRow(1,'Achats marchandises & var. stocks',Fn.achatsMarch+Fn.varStocksMarch,n1?n1.achatsMarch+n1.varStocksMarch:null,'r-detail',CA,['607','6037']);
+  cr+=efRow(1,'Achats mat. premières & appro.',Fn.achatsMatPrem,n1?n1.achatsMatPrem:null,'r-detail',CA,['601','602','603','6031','6032']);
+  cr+=efRow(1,'Autres achats & charges externes',Fn.chargesExternes,n1?n1.chargesExternes:null,'r-detail',CA,['604','605','606','608','61','62']);
+  cr+=efRow(1,'Impôts, taxes & versements assimilés',Fn.impotsTaxes,n1?n1.impotsTaxes:null,'r-detail',CA,['63']);
+  cr+=efRow(1,'Charges de personnel',Fn.chargesPerso,n1?n1.chargesPerso:null,'r-detail',CA,['64']);
+  cr+=efRow(1,'Dotations aux amortissements',Fn.dotAmort,n1?n1.dotAmort:null,'r-detail',CA,['681','687']);
+  cr+=efRow(1,'Autres charges',Fn.autresChargesGest,n1?n1.autresChargesGest:null,'r-detail',CA,['65']);
+  cr+=efRow(0,'RÉSULTAT D\'EXPLOITATION',Fn.REX,n1?n1.REX:null,'r-sig',CA,null);
+  cr+=efRow(1,'Produits financiers',Fn.prodFinanciers,n1?n1.prodFinanciers:null,'r-detail',CA,['76','786','796']);
+  cr+=efRow(1,'Charges financières',Fn.chargesFinancieres,n1?n1.chargesFinancieres:null,'r-detail',CA,['66','686']);
+  cr+=efRow(0,'RÉSULTAT FINANCIER',Fn.resultatFin,n1?n1.resultatFin:null,'r-sig',CA,null);
+  cr+=efRow(0,'RÉSULTAT COURANT AVANT IMPÔTS',Fn.resultatCourant,n1?n1.resultatCourant:null,'r-sig',CA,null);
+  cr+=efRow(1,'Produits exceptionnels',Fn.prodExcep,n1?n1.prodExcep:null,'r-detail',CA,['77','787','797']);
+  cr+=efRow(1,'Charges exceptionnelles',Fn.chargesExcep,n1?n1.chargesExcep:null,'r-detail',CA,['67','687']);
+  cr+=efRow(0,'RÉSULTAT EXCEPTIONNEL',Fn.resultatExcep,n1?n1.resultatExcep:null,'r-sig',CA,null);
+  cr+=efRow(1,'Participation salariés',Fn.participation,n1?n1.participation:null,'r-detail',CA,['691']);
+  cr+=efRow(1,'Impôts sur les bénéfices',Fn.IS,n1?n1.IS:null,'r-detail',CA,['695','696','697','698','699']);
+  cr+=efRow(0,'RÉSULTAT NET DE L\'EXERCICE',Fn.RN,n1?n1.RN:null,'r-total',CA,null);
+  cr+='</tbody></table>';
+  document.getElementById('efCR').innerHTML=cr;
+
+  // SIG
+  efRowId=0;
+  document.getElementById('efSIG').innerHTML=buildSIGTable(Fn,n1,CA);
+}
+
+function buildSIGTable(Fn,n1,CA){
+  efRowId=0;
+  var hdr='<table class="ef-table"><thead><tr>'
+    +'<th style="text-align:left;width:40%">Solde intermédiaire</th>'
+    +'<th>N (€)</th><th>% CA</th><th>N-1 (€)</th><th>% CA N-1</th>'
+    +'<th>Variation €</th><th>Variation %</th></tr></thead><tbody>';
+  var s=hdr;
+  s+=efRow(0,'Chiffre d\'affaires net',Fn.CA,n1?n1.CA:null,'r-detail',CA,['701','702','703','704','705','706','707','708']);
+  s+=efRow(0,'Variation stock marchandises',Fn.varStocksMarch,n1?n1.varStocksMarch:null,'r-detail',CA,['6037']);
+  s+=efRow(0,'MARGE COMMERCIALE',Fn.margeCom,n1?n1.margeCom:null,'r-sig',CA,null);
+  s+=efRow(0,'Production vendue',Fn.ventesProduits,n1?n1.ventesProduits:null,'r-detail',CA,['701','702','703','704','705','706','708']);
+  s+=efRow(0,'Production stockée',Fn.varStocksProd,n1?n1.varStocksProd:null,'r-detail',CA,['713','711','712']);
+  s+=efRow(0,'Production immobilisée',Fn.prodImmo,n1?n1.prodImmo:null,'r-detail',CA,['72']);
+  s+=efRow(0,'PRODUCTION DE L\'EXERCICE',Fn.prodExercice,n1?n1.prodExercice:null,'r-sig',CA,null);
+  s+=efRow(0,'Achats mat. prem. & appro.',-(Fn.achatsMatPrem+Fn.varStocksMat),n1?-(n1.achatsMatPrem+n1.varStocksMat):null,'r-detail',CA,['601','602','603','6031','6032']);
+  s+=efRow(0,'Autres achats & charges externes',-(Fn.chargesExternes),n1?-n1.chargesExternes:null,'r-detail',CA,['604','605','606','608','61','62']);
+  s+=efRow(0,'VALEUR AJOUTÉE',Fn.VA,n1?n1.VA:null,'r-sig',CA,null);
+  s+=efRow(0,'Subventions d\'exploitation',Fn.subvExpl,n1?n1.subvExpl:null,'r-detail',CA,['74']);
+  s+=efRow(0,'Impôts & taxes',-(Fn.impotsTaxes),n1?-n1.impotsTaxes:null,'r-detail',CA,['63']);
+  s+=efRow(0,'Charges de personnel',-(Fn.chargesPerso),n1?-n1.chargesPerso:null,'r-detail',CA,['64']);
+  s+=efRow(0,'EBE',Fn.EBE,n1?n1.EBE:null,'r-sig',CA,null);
+  s+=efRow(0,'Reprises & transferts',Fn.reprises,n1?n1.reprises:null,'r-detail',CA,['781','791']);
+  s+=efRow(0,'Autres produits de gestion',Fn.autresProdGest,n1?n1.autresProdGest:null,'r-detail',CA,['75']);
+  s+=efRow(0,'Dotations amort. & provisions',-(Fn.dotAmort),n1?-n1.dotAmort:null,'r-detail',CA,['681','687']);
+  s+=efRow(0,'Autres charges de gestion',-(Fn.autresChargesGest),n1?-n1.autresChargesGest:null,'r-detail',CA,['65']);
+  s+=efRow(0,'RÉSULTAT D\'EXPLOITATION',Fn.REX,n1?n1.REX:null,'r-sig',CA,null);
+  s+=efRow(0,'Résultat financier',Fn.resultatFin,n1?n1.resultatFin:null,'r-detail',CA,['76','786','796','66','686']);
+  s+=efRow(0,'RÉSULTAT COURANT',Fn.resultatCourant,n1?n1.resultatCourant:null,'r-sig',CA,null);
+  s+=efRow(0,'Résultat exceptionnel',Fn.resultatExcep,n1?n1.resultatExcep:null,'r-detail',CA,['77','787','797','67','687']);
+  s+=efRow(0,'Participation & IS',-(Fn.participation+Fn.IS),n1?-(n1.participation+n1.IS):null,'r-detail',CA,['691','695','696','697','698','699']);
+  s+=efRow(0,'RÉSULTAT NET',Fn.RN,n1?n1.RN:null,'r-total',CA,null);
+  s+='</tbody></table>';
+  return s;
+}
+
+// ── SEUILS ─────────────────────────────────────────────────
+function buildSeuils(){
+  var Fn=D.Fn;
+  var exN=document.getElementById('exerciceN').value||'N';
+  var criteres=[
+    {type:'Coopérative / Agricole',critere:'Capitaux propres',base:Fn.capitauxPropres,tmin:0.5,tmax:5,taux:3},
+    {type:'Coopérative / Agricole',critere:'Chiffre d\'affaires',base:Fn.CA,tmin:0.5,tmax:2,taux:2},
+    {type:'Général',critere:'Résultat courant avant impôt',base:Fn.resultatCourant,tmin:3,tmax:10,taux:5},
+    {type:'Général',critere:'Résultat net',base:Fn.RN,tmin:3,tmax:10,taux:5},
+    {type:'Général',critere:'Chiffre d\'affaires',base:Fn.CA,tmin:0.5,tmax:3,taux:3},
+    {type:'Général',critere:'Endettement net',base:Fn.endettementNet,tmin:1,tmax:2,taux:2},
+    {type:'Général',critere:'Total charges',base:Fn.totalAchatsCA+Fn.impotsTaxes+Fn.chargesPerso+Fn.dotAmort,tmin:0.5,tmax:3,taux:2},
+    {type:'Général',critere:'EBE / EBITDA',base:Fn.EBE,tmin:2,tmax:6,taux:3},
+    {type:'Holding / Fonds',critere:'Total bilan',base:Fn.totalActif,tmin:0.5,tmax:5,taux:3},
+    {type:'Holding / Fonds',critere:'Capitaux propres',base:Fn.capitauxPropres,tmin:1,tmax:5,taux:3},
+    {type:'Entité non lucrative',critere:'Revenus bruts',base:Fn.CA+Fn.varStocksProd+Fn.prodImmo+Fn.subvExpl,tmin:0.5,tmax:2,taux:1},
+    {type:'Entité non lucrative',critere:'Total charges',base:Fn.totalAchatsCA+Fn.impotsTaxes+Fn.chargesPerso+Fn.dotAmort,tmin:0.5,tmax:2,taux:1}
+  ];
+  seuilsData=criteres;
+  document.getElementById('seuilsHeader').innerHTML=
+    '<div class="seuil-kpi ss"><div class="label">Seuil de Signification (SS)</div><div class="val" id="val-ss">—</div><div class="sub">Retenu CO-CAC</div></div>'
+    +'<div class="seuil-kpi sp"><div class="label">Seuil de Planification (SP)</div><div class="val" id="val-sp">—</div><div class="sub">50% du SS</div></div>'
+    +'<div class="seuil-kpi sr"><div class="label">Anomalies insignifiantes (SR)</div><div class="val" id="val-sr">—</div><div class="sub">5% du SS</div></div>'
+    +'<div class="seuil-kpi al-b" style="border-top:3px solid var(--blue-m)"><div class="label">Total Bilan</div><div class="val">'+fmtK(Fn.totalActif)+' €</div><div class="sub">'+exN+'</div></div>'
+    +'<div class="seuil-kpi" style="border-top:3px solid var(--gray-m)"><div class="label">Chiffre d\'Affaires</div><div class="val">'+fmtK(Fn.CA)+' €</div><div class="sub">'+exN+'</div></div>';
+  var tbl='<table style="width:100%;border-collapse:collapse;font-size:11px"><thead><tr>'
+    +'<th style="background:#f0f4ff;color:var(--blue);padding:7px 10px;text-align:left;border-bottom:2px solid var(--border);font-size:10px;font-weight:600">Type</th>'
+    +'<th style="background:#f0f4ff;color:var(--blue);padding:7px 10px;border-bottom:2px solid var(--border);font-size:10px;font-weight:600">Critère</th>'
+    +'<th style="background:#f0f4ff;color:var(--blue);padding:7px 10px;text-align:right;border-bottom:2px solid var(--border);font-size:10px;font-weight:600">Montant</th>'
+    +'<th style="background:#f0f4ff;color:var(--blue);padding:7px 10px;text-align:center;border-bottom:2px solid var(--border);font-size:10px;font-weight:600">Taux indicatifs</th>'
+    +'<th style="background:#f0f4ff;color:var(--blue);padding:7px 10px;text-align:center;border-bottom:2px solid var(--border);font-size:10px;font-weight:600">Taux retenu (%)</th>'
+    +'<th style="background:#f0f4ff;color:var(--blue);padding:7px 10px;text-align:right;border-bottom:2px solid var(--border);font-size:10px;font-weight:600">SS calculé</th>'
+    +'<th style="background:#f0f4ff;color:var(--blue);padding:7px 10px;text-align:right;border-bottom:2px solid var(--border);font-size:10px;font-weight:600">SS retenu CO-CAC</th>'
+    +'<th style="background:#f0f4ff;color:var(--blue);padding:7px 10px;text-align:right;border-bottom:2px solid var(--border);font-size:10px;font-weight:600">SP (50%)</th>'
+    +'<th style="background:#f0f4ff;color:var(--blue);padding:7px 10px;text-align:right;border-bottom:2px solid var(--border);font-size:10px;font-weight:600">SR (5%)</th>'
+    +'</tr></thead><tbody>';
+  criteres.forEach(function(c,i){
+    var calc=Math.abs(c.base)*(c.taux/100);
+    var isNeg=c.base<0;
+    tbl+='<tr style="'+(i%2===0?'background:#fafbfc':'')+'">'
+      +'<td style="padding:5px 10px">'+c.type+'</td>'
+      +'<td style="padding:5px 10px;font-weight:500">'+c.critere+'</td>'
+      +'<td class="num" style="padding:5px 10px">'+fmtK(c.base)+' €'+(isNeg?' <span style="color:var(--red-m);font-size:10px">(négatif)</span>':'')+'</td>'
+      +'<td style="text-align:center;padding:5px 10px;color:var(--gray-m)">'+c.tmin+'% à '+c.tmax+'%</td>'
+      +'<td style="text-align:center;padding:5px 10px"><input type="number" class="taux-input" id="taux-'+i+'" value="'+c.taux+'" min="0" max="20" step="0.5" oninput="recalcSeuils()"></td>'
+      +'<td class="num" style="padding:5px 10px;font-weight:600">'+fmtK(calc)+' €</td>'
+      +'<td style="text-align:right;padding:5px 10px"><input type="number" class="retained-input" id="ret-'+i+'" placeholder="0" oninput="recalcSeuils()"> €</td>'
+      +'<td class="num" style="padding:5px 10px;color:var(--amber)" id="sp-'+i+'">'+fmtK(calc*0.5)+' €</td>'
+      +'<td class="num" style="padding:5px 10px;color:var(--green)" id="sr-'+i+'">'+fmtK(calc*0.05)+' €</td>'
+      +'</tr>';
+  });
+  tbl+='</tbody></table>';
+  tbl+='<div style="margin-top:14px;padding:12px 16px;background:#f0f4ff;border-radius:8px;display:flex;align-items:center;gap:16px;flex-wrap:wrap">'
+    +'<div style="font-weight:600;font-size:12px;color:var(--blue)">Seuil de signification global retenu :</div>'
+    +'<div style="display:flex;align-items:center;gap:8px"><span style="font-size:12px">SS =</span>'
+    +'<input type="number" id="ss-retenu" class="retained-input" placeholder="Saisir SS" style="width:120px" oninput="recalcSeuils()"> €</div>'
+    +'<div style="font-size:12px;color:var(--gray-m)">[SS = <span id="disp-ss">—</span> €] &nbsp; [SP = <span id="disp-sp">—</span> €] &nbsp; [SR = <span id="disp-sr">—</span> €]</div>'
+    +'</div>';
+  document.getElementById('seuilsTable').innerHTML=tbl;
+  recalcSeuils();
+  document.getElementById('anomalieClassement').innerHTML=
+    '<p style="font-size:12px;margin-bottom:10px;color:var(--gray)">L\'anomalie de classement relevée est-elle &gt; au seuil de signification ?</p>'
+    +'<p style="font-size:12px;color:var(--gray)">Si oui, la présentation du bilan ou du CR doit-elle être modifiée ?</p>'
+    +'<div style="margin-top:14px;display:flex;gap:12px;flex-wrap:wrap">'
+    +'<label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer"><input type="radio" name="anomalieClass" value="non" checked> Non</label>'
+    +'<label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer"><input type="radio" name="anomalieClass" value="oui"> Oui — modification nécessaire</label>'
+    +'</div>'
+    +'<textarea style="width:100%;margin-top:10px;border:1px solid var(--border);border-radius:6px;padding:8px;font-size:11px;resize:vertical;min-height:60px" placeholder="Commentaire…"></textarea>';
+}
+
+function recalcSeuils(){
+  seuilsData.forEach(function(c,i){
+    var t=parseFloat(document.getElementById('taux-'+i)?document.getElementById('taux-'+i).value:c.taux)||c.taux;
+    var calc=Math.abs(c.base)*(t/100);
+    var sp=document.getElementById('sp-'+i);var sr=document.getElementById('sr-'+i);
+    if(sp) sp.textContent=fmtK(calc*0.5)+' €';
+    if(sr) sr.textContent=fmtK(calc*0.05)+' €';
+  });
+  var ssRetenu=parseFloat(document.getElementById('ss-retenu')?document.getElementById('ss-retenu').value:0)||0;
+  var SS=ssRetenu||(D?Math.abs(D.Fn.CA)*(3/100):0);
+  var SP=SS*0.5;var SR=SS*0.05;
+  var v1=document.getElementById('val-ss');if(v1) v1.textContent=fmtK(SS)+' €';
+  var v2=document.getElementById('val-sp');if(v2) v2.textContent=fmtK(SP)+' €';
+  var v3=document.getElementById('val-sr');if(v3) v3.textContent=fmtK(SR)+' €';
+  var d1=document.getElementById('disp-ss');if(d1) d1.textContent=fmtK(SS);
+  var d2=document.getElementById('disp-sp');if(d2) d2.textContent=fmtK(SP);
+  var d3=document.getElementById('disp-sr');if(d3) d3.textContent=fmtK(SR);
+  if(D) updateBareme(D.Fn.totalActif,D.Fn.CA+D.Fn.prodFinanciers);
+}
+
+function updateBareme(totalBilan,totalProduits){
+  var total=totalBilan+totalProduits;
+  var tranches=[
+    {min:0,max:305000,h:'20 à 35'},{min:305000,max:760000,h:'30 à 50'},
+    {min:760000,max:1525000,h:'40 à 60'},{min:1525000,max:3050000,h:'50 à 80'},
+    {min:3050000,max:7622000,h:'70 à 120'},{min:7622000,max:15245000,h:'100 à 200'},
+    {min:15245000,max:45735000,h:'180 à 360'},{min:45735000,max:122000000,h:'300 à 700'},
+    {min:122000000,max:Infinity,h:'Accord client'}
+  ];
+  var active=-1;
+  for(var i=0;i<tranches.length;i++){if(total>=tranches[i].min&&total<tranches[i].max){active=i;break;}}
+  var rubriques=[
+    {lbl:'TOTAL BILAN',val:fmtK(totalBilan)+' €'},
+    {lbl:'PRODUITS D\'EXPLOITATION',val:fmtK(D.Fn.CA+D.Fn.varStocksProd+D.Fn.prodImmo+D.Fn.subvExpl+D.Fn.autresProdGest)+' €'},
+    {lbl:'PRODUITS FINANCIERS',val:fmtK(D.Fn.prodFinanciers)+' €'},
+    {lbl:'TOTAL',val:fmtK(total)+' €'}
+  ];
+  var html='<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">'
+    +'<table style="width:100%;border-collapse:collapse;font-size:11px"><thead><tr>'
+    +'<th style="background:#f0f4ff;color:var(--blue);padding:6px 9px;text-align:left;border-bottom:2px solid var(--border);font-size:10px;font-weight:600">Montant total bilan + produits</th>'
+    +'<th style="background:#f0f4ff;color:var(--blue);padding:6px 9px;border-bottom:2px solid var(--border);font-size:10px;font-weight:600;text-align:center">Heures</th>'
+    +'</tr></thead><tbody>';
+  tranches.forEach(function(t,i){
+    var lbl=t.max===Infinity?'au-delà de 122 000 000 €':'de '+fmtK(t.min)+' € à '+fmtK(t.max)+' €';
+    html+='<tr class="'+(i===active?'active-row':'')+'"><td style="padding:4px 9px">'+lbl+'</td><td style="text-align:center;padding:4px 9px">'+t.h+'</td></tr>';
+  });
+  html+='</tbody></table>'
+    +'<table style="width:100%;border-collapse:collapse;font-size:11px"><thead><tr>'
+    +'<th style="background:#f0f4ff;color:var(--blue);padding:6px 9px;text-align:left;border-bottom:2px solid var(--border);font-size:10px;font-weight:600">Rubriques</th>'
+    +'<th style="background:#f0f4ff;color:var(--blue);padding:6px 9px;border-bottom:2px solid var(--border);font-size:10px;font-weight:600;text-align:right">Montant</th>'
+    +'</tr></thead><tbody>';
+  rubriques.forEach(function(r){html+='<tr><td style="padding:5px 9px;font-weight:500">'+r.lbl+'</td><td style="text-align:right;padding:5px 9px">'+r.val+'</td></tr>';});
+  html+='<tr style="background:#f0f4ff"><td style="padding:5px 9px;font-weight:600">Heures théoriques</td><td style="text-align:right;padding:5px 9px;font-weight:600;color:var(--blue)">'+(active>=0?tranches[active].h:'—')+'</td></tr>'
+    +'<tr><td style="padding:5px 9px">Heures réelles</td><td style="text-align:right;padding:5px 9px"><input type="number" class="hours-input" id="heuresReel" placeholder="0"> h</td></tr>'
+    +'<tr><td style="padding:5px 9px">Respect barème</td><td style="text-align:right;padding:5px 9px" id="respectBareme">—</td></tr>'
+    +'<tr><td style="padding:5px 9px">Dérogation</td><td style="text-align:right;padding:5px 9px"><input type="text" class="hours-input" style="width:100px" placeholder="Non"></td></tr>'
+    +'</tbody></table></div>';
+  document.getElementById('baremeTable').innerHTML=html;
+  var hr=document.getElementById('heuresReel');
+  if(hr&&active>=0){
+    hr.addEventListener('input',function(){
+      var reel=parseInt(this.value)||0;
+      var parts=tranches[active].h.split(' à ').map(Number);
+      var hmin=parts[0];var hmax=parts[1]||hmin;
+      var ok=reel>=hmin&&reel<=hmax;
+      var el=document.getElementById('respectBareme');
+      if(el) el.innerHTML=reel?'<span style="color:'+(ok?'var(--green-m)':'var(--red-m)')+';font-weight:600">'+(ok?'✓ Oui':'✗ Non')+'</span>':'—';
+    });
+  }
+}
+
+// ── SYNTHESE ───────────────────────────────────────────────
+function buildSynthese(){
+  var annees=D.annees;var series=D.series;var Fn=D.Fn;var Fn1=D.Fn1;
+  var kpis=[
+    {lbl:'CA',val:fmt(Fn.CA),dv:Fn1?varPct(Fn.CA,Fn1.CA):null,inv:false,al:Fn1&&Fn.CA<Fn1.CA?'al-a':'al-g'},
+    {lbl:'EBE',val:fmt(Fn.EBE),dv:Fn1?varPct(Fn.EBE,Fn1.EBE):null,inv:false,al:Fn.EBE<0?'al-r':Fn1&&Fn.EBE<Fn1.EBE?'al-a':'al-g'},
+    {lbl:'REX',val:fmt(Fn.REX),dv:Fn1?varPct(Fn.REX,Fn1.REX):null,inv:false,al:Fn.REX<0?'al-r':'al-g'},
+    {lbl:'Résultat net',val:fmt(Fn.RN),dv:Fn1?varPct(Fn.RN,Fn1.RN):null,inv:false,al:Fn.RN<0?'al-r':Fn1&&Fn.RN<Fn1.RN?'al-a':'al-g'},
+    {lbl:'Marge EBE',val:pct(Fn.margeEBE),dv:Fn1?Fn.margeEBE-Fn1.margeEBE:null,inv:false,al:Fn.margeEBE<0.08?'al-r':Fn.margeEBE<0.15?'al-a':'al-g'},
+    {lbl:'Trésorerie nette',val:fmt(Fn.TN),dv:Fn1?varPct(Fn.TN,Fn1.TN):null,inv:false,al:Fn.TN<0?'al-r':'al-g'},
+    {lbl:'Endettement/CP',val:Fn.endettement.toFixed(2)+'x',dv:Fn1?Fn.endettement-Fn1.endettement:null,inv:true,al:Fn.endettement>2?'al-r':Fn.endettement>1?'al-a':'al-g'},
+    {lbl:'ROE',val:pct(Fn.ROE),dv:Fn1?Fn.ROE-Fn1.ROE:null,inv:false,al:Fn.ROE<0?'al-r':Fn.ROE<0.05?'al-a':'al-g'}
+  ];
+  document.getElementById('kpiGrid').innerHTML=kpis.map(function(k){
+    return '<div class="kpi-card '+k.al+'">'
+      +'<div class="kpi-label">'+k.lbl+'</div>'
+      +'<div class="kpi-value '+(k.val[0]==='-'?'neg':'')+'" >'+k.val+'</div>'
+      +'<div class="kpi-delta '+(k.dv!==null?clrCls(k.inv?-k.dv:k.dv):'flat')+'">'+(k.dv!==null?deltaStr(k.dv):'')+'</div>'
+      +'</div>';
+  }).join('');
+  destroyChart('chartCA');
+  charts.chartCA=new Chart(document.getElementById('chartCA'),{type:'bar',data:{labels:annees,datasets:[{label:'CA',data:series.map(function(s){return Math.round(s.CA);}),backgroundColor:'#1e3a8a',borderRadius:4},{label:'EBE',data:series.map(function(s){return Math.round(s.EBE);}),backgroundColor:'#10b981',borderRadius:4}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{boxWidth:8,font:{size:10}}}},scales:{y:{ticks:{callback:function(v){return fmt(v);}}}}}});
+  destroyChart('chartMarges');
+  charts.chartMarges=new Chart(document.getElementById('chartMarges'),{type:'line',data:{labels:annees,datasets:[{label:'Marge EBE %',data:series.map(function(s){return +(s.margeEBE*100).toFixed(1);}),borderColor:'#3b82f6',tension:.4,borderWidth:2,fill:false},{label:'Marge REX %',data:series.map(function(s){return +(s.margeREX*100).toFixed(1);}),borderColor:'#10b981',tension:.4,borderWidth:2,fill:false},{label:'Marge nette %',data:series.map(function(s){return +(s.margeNette*100).toFixed(1);}),borderColor:'#f59e0b',tension:.4,borderWidth:2,fill:false}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{boxWidth:8,font:{size:10}}}},scales:{y:{ticks:{callback:function(v){return v+'%';}}}}}});
+  destroyChart('chartDonut');
+  charts.chartDonut=new Chart(document.getElementById('chartDonut'),{type:'doughnut',data:{labels:['EBE','Résultat fin.','Résultat excep.','IS'],datasets:[{data:[Fn.EBE,Fn.resultatFin,Fn.resultatExcep,Fn.IS].map(Math.round),backgroundColor:['#1e3a8a','#3b82f6','#f59e0b','#9ca3af'],borderWidth:2,borderColor:'#fff'}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'right',labels:{boxWidth:8,font:{size:10}}}}}});
+  document.getElementById('alertMini').innerHTML=buildAlerts().slice(0,4).map(alertHTML).join('');
+}
+
+// ── BILAN ANALYSE ──────────────────────────────────────────
+function buildBilan(){
+  var annees=D.annees;var series=D.series;var Fn=D.Fn;var Fn1=D.Fn1;
+  function setKpi(v,d,val,prev){
+    document.getElementById(v).textContent=fmt(val);
+    var dv=prev!=null?varPct(val,prev):null;
+    var el=document.getElementById(d);el.className='kpi-delta '+(dv!=null?clrCls(dv):'flat');
+    el.textContent=dv!=null?deltaStr(dv):'—';
+  }
+  setKpi('vFRNG','dFRNG',Fn.FRNG,Fn1?Fn1.FRNG:null);
+  setKpi('vBFR','dBFR',Fn.BFR,Fn1?Fn1.BFR:null);
+  setKpi('vTN','dTN',Fn.TN,Fn1?Fn1.TN:null);
+  destroyChart('chartActif');
+  charts.chartActif=new Chart(document.getElementById('chartActif'),{type:'doughnut',data:{labels:['Immo. nettes','Stocks','Créances cli.','Trésorerie','Autres créances'],datasets:[{data:[Fn.immoNettes,Fn.stocks,Fn.creancesCli,Fn.tresorerie,Fn.autresCreances].map(function(v){return Math.max(0,Math.round(v));}),backgroundColor:['#1e3a8a','#3b82f6','#60a5fa','#93c5fd','#bfdbfe'],borderWidth:2,borderColor:'#fff'}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'right',labels:{boxWidth:8,font:{size:10}}}}}});
+  destroyChart('chartPassif');
+  charts.chartPassif=new Chart(document.getElementById('chartPassif'),{type:'doughnut',data:{labels:['Cap. propres','Provisions','Dettes fin.','Dettes exp.'],datasets:[{data:[Fn.capitauxPropres,Fn.provisions,Fn.dettesFin,Fn.dettesExp].map(function(v){return Math.max(0,Math.round(v));}),backgroundColor:['#065f46','#34d399','#92400e','#f59e0b'],borderWidth:2,borderColor:'#fff'}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'right',labels:{boxWidth:8,font:{size:10}}}}}});
+  destroyChart('chartFRBFR');
+  charts.chartFRBFR=new Chart(document.getElementById('chartFRBFR'),{type:'bar',data:{labels:annees,datasets:[{label:'FRNG',data:series.map(function(s){return Math.round(s.FRNG);}),backgroundColor:'#3b82f6',borderRadius:3},{label:'BFR',data:series.map(function(s){return Math.round(s.BFR);}),backgroundColor:'#f59e0b',borderRadius:3},{label:'TN',data:series.map(function(s){return Math.round(s.TN);}),backgroundColor:series.map(function(s){return s.TN>=0?'#10b981':'#ef4444';}),borderRadius:3}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{boxWidth:8,font:{size:10}}}},scales:{y:{ticks:{callback:function(v){return fmt(v);}}}}}});
+  var postes=[{n:'Immo. nettes',k:'immoNettes'},{n:'Stocks',k:'stocks'},{n:'Créances clients',k:'creancesCli'},{n:'Trésorerie',k:'tresorerie'},{n:'Capitaux propres',k:'capitauxPropres'},{n:'Provisions',k:'provisions'},{n:'Dettes financières',k:'dettesFin'},{n:'Dettes exploitation',k:'dettesExp'}];
+  document.getElementById('bilanTable').innerHTML='<table class="anal"><thead><tr><th>Poste</th>'+annees.map(function(a){return '<th class="num">'+a+'</th>';}).join('')+'<th class="num">Var N/N-1</th><th>Signal</th></tr></thead><tbody>'
+    +postes.map(function(p){
+      var vals=series.map(function(s){return s[p.k];});
+      var vN=vals[vals.length-1];var vN1=vals.length>1?vals[vals.length-2]:null;
+      var vr=vN1?varPct(vN,vN1):null;
+      var sig=vr===null?'<span class="pill pill-b">1 exercice</span>':Math.abs(vr)>0.15?(vr>0?'<span class="pill pill-a">Hausse sign.</span>':'<span class="pill pill-r">Baisse sign.</span>'):'<span class="pill pill-g">Stable</span>';
+      return '<tr><td class="bold">'+p.n+'</td>'+vals.map(function(v){return '<td class="num">'+fmt(v)+'</td>';}).join('')
+        +'<td class="num '+(vr!=null?clrCls(vr):'flat')+'">'+(vr!=null?deltaStr(vr):'—')+'</td><td>'+sig+'</td></tr>';
+    }).join('')+'</tbody></table>';
+}
+
+// ── CR ANALYSE ─────────────────────────────────────────────
+function buildCR(){
+  var annees=D.annees;var series=D.series;var Fn=D.Fn;
+  var sigDef=[{lbl:'CA',k:'CA',c:'#1e3a8a'},{lbl:'VA',k:'VA',c:'#3b82f6'},{lbl:'EBE',k:'EBE',c:'#10b981'},{lbl:'REX',k:'REX',c:'#065f46'},{lbl:'Résultat fin.',k:'resultatFin',c:'#f59e0b'},{lbl:'Résultat courant',k:'resultatCourant',c:'#d97706'},{lbl:'Résultat net',k:'RN',c:'#7f1d1d'}];
+  destroyChart('chartWaterfall');
+  charts.chartWaterfall=new Chart(document.getElementById('chartWaterfall'),{type:'bar',data:{labels:sigDef.map(function(s){return s.lbl;}),datasets:[{label:'N',data:sigDef.map(function(s){return Math.round(Fn[s.k]);}),backgroundColor:sigDef.map(function(s){return s.c;}),borderRadius:4}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{ticks:{callback:function(v){return fmt(v);}}},x:{ticks:{font:{size:10}}}}}});
+  document.getElementById('sigTable').innerHTML='<table class="anal"><thead><tr><th>Solde</th>'+annees.map(function(a){return '<th class="num">'+a+'</th>';}).join('')+'<th class="num">Var N/N-1</th><th class="num">% CA</th></tr></thead><tbody>'
+    +sigDef.map(function(sig){
+      var vals=series.map(function(s){return s[sig.k];});
+      var vN=vals[vals.length-1];var vN1=vals.length>1?vals[vals.length-2]:null;
+      var vr=vN1?varPct(vN,vN1):null;
+      return '<tr><td class="bold">'+sig.lbl+'</td>'+vals.map(function(v){return '<td class="num">'+fmt(v)+'</td>';}).join('')
+        +'<td class="num '+(vr!=null?clrCls(vr):'flat')+'">'+(vr!=null?deltaStr(vr):'—')+'</td>'
+        +'<td class="num">'+pct(Fn.CA?vN/Fn.CA:0)+'</td></tr>';
+    }).join('')+'</tbody></table>';
+  destroyChart('chartCR');
+  charts.chartCR=new Chart(document.getElementById('chartCR'),{type:'bar',data:{labels:annees,datasets:[{label:'REX',data:series.map(function(s){return Math.round(s.REX);}),backgroundColor:'#1e3a8a',borderRadius:3},{label:'Résultat fin.',data:series.map(function(s){return Math.round(s.resultatFin);}),backgroundColor:'#f59e0b',borderRadius:3},{label:'Résultat excep.',data:series.map(function(s){return Math.round(s.resultatExcep);}),backgroundColor:'#ef4444',borderRadius:3}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{boxWidth:8,font:{size:10}}}},scales:{y:{ticks:{callback:function(v){return fmt(v);}}}}}});
+  destroyChart('chartCharges');
+  charts.chartCharges=new Chart(document.getElementById('chartCharges'),{type:'doughnut',data:{labels:['Achats ext.','Ch. personnel','Dot. amort.','Ch. fin.','Impôts'],datasets:[{data:[Fn.chargesExternes,Fn.chargesPerso,Fn.dotAmort,Fn.chargesFinancieres,Fn.impotsTaxes].map(function(v){return Math.max(0,Math.round(v));}),backgroundColor:['#1e3a8a','#3b82f6','#f59e0b','#ef4444','#9ca3af'],borderWidth:2,borderColor:'#fff'}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'right',labels:{boxWidth:8,font:{size:10}}}}}});
+}
+
+// ── RATIOS ─────────────────────────────────────────────────
+function buildRatios(){
+  var annees=D.annees;var series=D.series;var Fn=D.Fn;
+  function rCard(name,val,unit,bench,color,fill){
+    var disp=isNaN(val)||!isFinite(val)?'—':(unit==='%'?pct(val):(val.toFixed(2)+' '+unit));
+    return '<div class="ratio-card"><div class="ratio-name">'+name+'</div>'
+      +'<div class="ratio-val" style="color:'+color+'">'+disp+'</div>'
+      +'<div class="ratio-bench">Réf. : '+bench+'</div>'
+      +'<div class="ratio-bar"><div class="ratio-fill" style="width:'+Math.min(Math.max(fill,0),100)+'%;background:'+color+'"></div></div></div>';
+  }
+  document.getElementById('ratioRentab').innerHTML=[rCard('ROE',Fn.ROE,'%','> 8%','#1e3a8a',Fn.ROE*500),rCard('ROA',Fn.ROA,'%','> 3%','#3b82f6',Fn.ROA*1000),rCard('Marge EBE',Fn.margeEBE,'%','> 15%','#10b981',Fn.margeEBE*400),rCard('Marge REX',Fn.margeREX,'%','> 8%','#065f46',Fn.margeREX*600),rCard('Marge nette',Fn.margeNette,'%','> 4%','#f59e0b',Fn.margeNette*1200),rCard('VA / CA',Fn.margeVA,'%','> 25%','#9ca3af',Fn.margeVA*200)].join('');
+  document.getElementById('ratioLiquid').innerHTML=[rCard('Liquidité générale',Fn.liquidGen,'x','> 1.5','#3b82f6',Fn.liquidGen*30),rCard('Autonomie financière',Fn.autonomie,'%','> 40%','#10b981',Fn.autonomie*150),rCard('Endettement / CP',Fn.endettement,'x','< 1x','#ef4444',100-Fn.endettement*20),rCard('Couverture intérêts',Fn.couvertInterets,'x','> 3x','#f59e0b',Fn.couvertInterets*12),rCard('Délai recouvrement',Fn.delaiCreances,'j','< 60j','#9ca3af',100-Fn.delaiCreances),rCard('Dette nette / EBE',Fn.detteNetteEBE,'x','< 3x','#1e3a8a',100-Fn.detteNetteEBE*12)].join('');
+  var hmDef=[{n:'ROE',k:'ROE',thr:0.08,inv:false,f:function(v){return pct(v,1);}},{n:'Marge EBE',k:'margeEBE',thr:0.15,inv:false,f:function(v){return pct(v,1);}},{n:'Marge REX',k:'margeREX',thr:0.08,inv:false,f:function(v){return pct(v,1);}},{n:'Endettement/CP',k:'endettement',thr:1,inv:true,f:function(v){return v.toFixed(2)+'x';}},{n:'Liquidité gén.',k:'liquidGen',thr:1.5,inv:false,f:function(v){return v.toFixed(2)+'x';}},{n:'Couv. intérêts',k:'couvertInterets',thr:3,inv:false,f:function(v){return v.toFixed(1)+'x';}},{n:'Dette nette/EBE',k:'detteNetteEBE',thr:3,inv:true,f:function(v){return v.toFixed(1)+'x';}}];
+  function hmColor(v,thr,inv){var ok=inv?v<thr:v>thr;var border=inv?v<thr*1.3:v>thr*0.7;if(ok) return {bg:'#d1fae5',txt:'#065f46'};if(border) return {bg:'#fef3c7',txt:'#92400e'};return {bg:'#fee2e2',txt:'#7f1d1d'};}
+  var hm='<table class="hm-table"><thead><tr><th>Ratio</th>'+annees.map(function(a){return '<th>'+a+'</th>';}).join('')+'</tr></thead><tbody>';
+  hmDef.forEach(function(r){
+    hm+='<tr><td>'+r.n+'</td>';
+    series.forEach(function(s){var v=s[r.k];var c=hmColor(v,r.thr,r.inv);hm+='<td><span class="hm-pill" style="background:'+c.bg+';color:'+c.txt+'">'+r.f(v)+'</span></td>';});
+    hm+='</tr>';
+  });
+  hm+='</tbody></table>';
+  document.getElementById('heatmap').innerHTML=hm;
+  destroyChart('chartRatios');
+  charts.chartRatios=new Chart(document.getElementById('chartRatios'),{type:'line',data:{labels:annees,datasets:[{label:'ROE %',data:series.map(function(s){return +(s.ROE*100).toFixed(1);}),borderColor:'#1e3a8a',tension:.4,borderWidth:2},{label:'Marge EBE %',data:series.map(function(s){return +(s.margeEBE*100).toFixed(1);}),borderColor:'#10b981',tension:.4,borderWidth:2},{label:'Marge REX %',data:series.map(function(s){return +(s.margeREX*100).toFixed(1);}),borderColor:'#f59e0b',tension:.4,borderWidth:2},{label:'Marge nette %',data:series.map(function(s){return +(s.margeNette*100).toFixed(1);}),borderColor:'#ef4444',tension:.4,borderWidth:2}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{boxWidth:8,font:{size:10}}}},scales:{y:{ticks:{callback:function(v){return v+'%';}}}}}});
+}
+
+// ── RISQUES ────────────────────────────────────────────────
+function buildAlerts(){
+  var Fn=D.Fn;var Fn1=D.Fn1;var al=[];
+  if(Fn.TN<0) al.push({t:'red',title:'Trésorerie nette négative',desc:'TN = '+fmt(Fn.TN)+' — risque de rupture de liquidité.'});
+  if(Fn.RN<0) al.push({t:'red',title:'Résultat net déficitaire',desc:'RN = '+fmt(Fn.RN)+' — analyser continuité d\'exploitation.'});
+  else if(Fn1&&Fn.RN<Fn1.RN*0.8) al.push({t:'red',title:'Résultat net en forte baisse',desc:'-'+((1-Fn.RN/Fn1.RN)*100).toFixed(0)+'% vs N-1.'});
+  if(Fn.endettement>1.5) al.push({t:'red',title:'Levier financier très élevé',desc:'Dettes fin./CP = '+Fn.endettement.toFixed(2)+'x.'});
+  if(Fn.detteNetteEBE>4) al.push({t:'red',title:'Dette nette / EBE > 4x',desc:'Ratio à '+Fn.detteNetteEBE.toFixed(1)+'x.'});
+  if(Fn.resultatFin<-Fn.CA*0.05) al.push({t:'amber',title:'Charges financières élevées',desc:'Résultat fin. = '+fmt(Fn.resultatFin)+'.'});
+  if(Fn1&&Fn.CA<Fn1.CA) al.push({t:'amber',title:'Recul du chiffre d\'affaires',desc:fmt(Fn1.CA)+' → '+fmt(Fn.CA)+' (-'+((1-Fn.CA/Fn1.CA)*100).toFixed(1)+'%).'});
+  if(Fn1&&Fn.margeEBE<Fn1.margeEBE-0.02) al.push({t:'amber',title:'Dégradation marge EBE',desc:pct(Fn1.margeEBE)+' → '+pct(Fn.margeEBE)+'.'});
+  if(Fn.resultatExcep<-Fn.CA*0.01) al.push({t:'amber',title:'Résultat exceptionnel négatif significatif',desc:fmt(Fn.resultatExcep)+'.'});
+  if(Fn.delaiCreances>70) al.push({t:'amber',title:'Délai recouvrement élevé',desc:'DSO = '+Fn.delaiCreances.toFixed(0)+' j.'});
+  if(al.length===0) al.push({t:'green',title:'Aucune alerte critique',desc:'Indicateurs dans les normes.'});
+  return al;
+}
+function alertHTML(a){
+  return '<div class="alert-item '+(a.t==='red'?'red':a.t==='amber'?'amber':'green')+'">'
+    +'<div class="alert-icon">'+(a.t==='red'?'⚠':a.t==='green'?'✓':'ℹ')+'</div>'
+    +'<div><div class="alert-title">'+a.title+'</div><div class="alert-desc">'+a.desc+'</div></div></div>';
+}
+function buildRisques(){
+  document.getElementById('alertFull').innerHTML=buildAlerts().map(alertHTML).join('');
+  var Fn=D.Fn;var Fn1=D.Fn1;
+  var risques=[{n:'Liquidité',p:Fn.TN<0?3:2,i:3},{n:'Endettement',p:Fn.endettement>1.5?3:2,i:3},{n:'Résultat net',p:Fn.RN<0?3:Fn1&&Fn.RN<Fn1.RN*0.8?2:1,i:2},{n:'CA / Activité',p:Fn1&&Fn.CA<Fn1.CA?2:1,i:2},{n:'Charges fin.',p:Fn.resultatFin<-Fn.CA*0.05?3:2,i:2},{n:'Créances',p:Fn.delaiCreances>70?2:1,i:1}];
+  document.getElementById('riskMatrix').innerHTML='<div style="font-size:11px;color:var(--gray-m);margin-bottom:8px">Score = Probabilité × Impact</div>'
+    +'<div style="display:flex;flex-wrap:wrap;gap:7px">'+risques.map(function(r){var sc=r.p*r.i;var c=sc>=6?{bg:'#fee2e2',txt:'#7f1d1d'}:sc>=3?{bg:'#fef3c7',txt:'#92400e'}:{bg:'#d1fae5',txt:'#065f46'};return '<div style="background:'+c.bg+';color:'+c.txt+';border-radius:7px;padding:7px 12px;font-size:11px;font-weight:600;min-width:100px;text-align:center">'+r.n+'<br><span style="font-weight:400;font-size:10px">Score '+sc+'/9</span></div>';}).join('')+'</div>'
+    +'<div style="display:flex;gap:8px;margin-top:10px;font-size:10px;flex-wrap:wrap"><span style="background:#fee2e2;color:#7f1d1d;padding:2px 7px;border-radius:9px;font-weight:600">Élevé 6-9</span><span style="background:#fef3c7;color:#92400e;padding:2px 7px;border-radius:9px;font-weight:600">Modéré 3-5</span><span style="background:#d1fae5;color:#065f46;padding:2px 7px;border-radius:9px;font-weight:600">Faible 1-2</span></div>';
+  var prog=[{p:'ÉLEVÉE',d:'Trésorerie & liquidité',t:'Flux de trésorerie, rapprochements, warrants, lignes CT, covenants.',cl:'pill-r'},{p:'ÉLEVÉE',d:'Charges financières & endettement',t:'Analyse emprunts, covenants bancaires, refinancement, intérêts courus.',cl:'pill-r'},{p:'ÉLEVÉE',d:'Résultat net — causes de la perte',t:'Décomposition REX/Fin/Excep, éléments non récurrents, entretien DAF.',cl:'pill-r'},{p:'MOYENNE',d:'Stocks (vins & matières sèches)',t:'Valorisation, provisions dépréciations, inventaire physique.',cl:'pill-a'},{p:'MOYENNE',d:'Créances clients & FAE',t:'Aging balance, provisions, FAE à clôture vs facturation réelle.',cl:'pill-a'},{p:'MOYENNE',d:'Dettes financières',t:'Tableau amortissement, échéancier, intérêts courus, warrants.',cl:'pill-a'},{p:'STANDARD',d:'Charges de personnel',t:'Masse salariale, primes, indemnités licenciement.',cl:'pill-b'},{p:'STANDARD',d:'Subventions',t:'Quote-part virée au résultat, cohérence avec subventions au passif.',cl:'pill-b'}];
+  document.getElementById('progTravail').innerHTML='<table class="anal"><thead><tr><th>Priorité</th><th>Domaine</th><th>Travaux planifiés</th></tr></thead><tbody>'
+    +prog.map(function(p){return '<tr><td><span class="pill '+p.cl+'">'+p.p+'</span></td><td class="bold">'+p.d+'</td><td style="font-size:11px">'+p.t+'</td></tr>';}).join('')+'</tbody></table>';
+}
+
+// ── DIAGNOSTIC ─────────────────────────────────────────────
+function buildDiagnostic(soldes,F,balSoldes){
+  // Résumé des masses par classe
+  var classes=[
+    {lbl:'Classe 1 — Capitaux',pfx:['1'],sens:'passif'},
+    {lbl:'Classe 2 — Immobilisations',pfx:['2'],sens:'actif'},
+    {lbl:'Classe 3 — Stocks',pfx:['3'],sens:'actif'},
+    {lbl:'Classe 4 — Tiers',pfx:['4'],sens:'mixte'},
+    {lbl:'Classe 5 — Financiers',pfx:['5'],sens:'mixte'},
+    {lbl:'Classe 6 — Charges',pfx:['6'],sens:'charge'},
+    {lbl:'Classe 7 — Produits',pfx:['7'],sens:'produit'}
+  ];
+  var html='<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:11px">'
+    +'<thead><tr style="background:#f0f4ff"><th style="padding:6px 10px;text-align:left;font-weight:600;color:var(--blue)">Classe</th>'
+    +'<th style="padding:6px 10px;text-align:right;font-weight:600;color:var(--blue)">Total Débit</th>'
+    +'<th style="padding:6px 10px;text-align:right;font-weight:600;color:var(--blue)">Total Crédit</th>'
+    +'<th style="padding:6px 10px;text-align:right;font-weight:600;color:var(--blue)">Solde net (D-C)</th>'
+    +'<th style="padding:6px 10px;text-align:left;font-weight:600;color:var(--blue)">Sens normal</th>'
+    +'</tr></thead><tbody>';
+
+  classes.forEach(function(cl){
+    var d=0,c=0;
+    Object.keys(soldes).forEach(function(cpt){
+      if(cl.pfx.some(function(p){return cpt.startsWith(p);})){d+=soldes[cpt].d;c+=soldes[cpt].c;}
+    });
+    var net=d-c;
+    var clr=net>0?'color:var(--blue-m)':'color:var(--amber-m)';
+    html+='<tr style="border-bottom:1px solid var(--border)">'
+      +'<td style="padding:5px 10px;font-weight:500">'+cl.lbl+'</td>'
+      +'<td style="padding:5px 10px;text-align:right;font-variant-numeric:tabular-nums">'+fmtK(d)+' €</td>'
+      +'<td style="padding:5px 10px;text-align:right;font-variant-numeric:tabular-nums">'+fmtK(c)+' €</td>'
+      +'<td style="padding:5px 10px;text-align:right;font-weight:600;font-variant-numeric:tabular-nums;'+clr+'">'+fmtK(net)+' €</td>'
+      +'<td style="padding:5px 10px;font-size:10px;color:var(--gray-m)">'+cl.sens+'</td>'
+      +'</tr>';
+  });
+  html+='</tbody></table></div>';
+
+  // Contrôle équilibre bilan
+  var ecart=F.totalActif-F.totalPassif;
+  var ecartPct=F.totalActif?Math.abs(ecart/F.totalActif)*100:0;
+  var ok=Math.abs(ecart)<F.totalActif*0.005; // tolérance 0.5%
+  html+='<div style="margin-top:12px;padding:10px 14px;border-radius:8px;background:'+(ok?'#d1fae5':'#fee2e2')+';font-size:12px">'
+    +'<strong>Contrôle équilibre bilan</strong><br>'
+    +'Total Actif = <strong>'+fmtK(F.totalActif)+' €</strong> &nbsp;|&nbsp; '
+    +'Total Passif = <strong>'+fmtK(F.totalPassif)+' €</strong> &nbsp;|&nbsp; '
+    +'Écart = <strong style="color:'+(ok?'var(--green-m)':'var(--red-m)')+'">'+fmtK(ecart)+' € ('+ecartPct.toFixed(2)+'%)</strong>'
+    +(ok?' &nbsp;✓ Bilan équilibré':' &nbsp;⚠ Écart significatif — vérifier les comptes de passage (47x, 48x) et les comptes mixtes (4x)')
+    +'</div>';
+
+  // Points clés reconstitués
+  html+='<div style="margin-top:10px;display:grid;grid-template-columns:1fr 1fr;gap:8px">';
+  var points=[
+    {lbl:'CA reconstitué',val:F.CA},
+    {lbl:'EBE',val:F.EBE},
+    {lbl:'Résultat net (compte 12)',val:F.rnExercice},
+    {lbl:'Résultat net calculé',val:F.RN_calc},
+    {lbl:'Immo brutes',val:F.immoBrut},
+    {lbl:'Amortissements cumulés',val:-F.amortCumul},
+    {lbl:'Capitaux propres',val:F.capitauxPropres},
+    {lbl:'Dettes financières',val:F.dettesFin}
+  ];
+  points.forEach(function(p){
+    html+='<div style="background:#f8fafc;border:1px solid var(--border);border-radius:6px;padding:8px 12px">'
+      +'<div style="font-size:10px;color:var(--gray-m);font-weight:600;text-transform:uppercase;letter-spacing:.3px">'+p.lbl+'</div>'
+      +'<div style="font-size:14px;font-weight:700;color:var(--blue);margin-top:2px">'+fmtK(p.val)+' €</div>'
+      +'</div>';
+  });
+  html+='</div>';
+
+  // ── Réconciliation FEC ↔ Balance ─────────────────────────
+  if(balSoldes){
+    var Ffec=buildFinancials(soldes);
+    var lignes=[
+      {lbl:'Total Actif',fec:Ffec.totalActif,bal:F.totalActif},
+      {lbl:'Actif immobilisé net',fec:Ffec.totalActifImmo,bal:F.totalActifImmo},
+      {lbl:'Actif circulant net',fec:Ffec.totalActifCirc,bal:F.totalActifCirc},
+      {lbl:'Total Passif',fec:Ffec.totalPassif,bal:F.totalPassif},
+      {lbl:'Capitaux propres',fec:Ffec.capitauxPropres,bal:F.capitauxPropres},
+      {lbl:'Dettes financières',fec:Ffec.dettesFin,bal:F.dettesFin},
+      {lbl:'Dettes d\'exploitation',fec:Ffec.dettesExp,bal:F.dettesExp}
+    ];
+    html+='<div style="margin-top:14px;border-top:2px solid var(--blue-m);padding-top:12px">';
+    html+='<div style="font-size:12px;font-weight:600;color:var(--blue);margin-bottom:8px">Réconciliation FEC → Balance (classes 1–5)</div>';
+    html+='<table style="width:100%;border-collapse:collapse;font-size:11px">'
+      +'<thead><tr style="background:#f0f4ff">'
+      +'<th style="padding:5px 10px;text-align:left;color:var(--blue);font-weight:600">Poste</th>'
+      +'<th style="padding:5px 10px;text-align:right;color:var(--blue);font-weight:600">FEC seul</th>'
+      +'<th style="padding:5px 10px;text-align:right;color:var(--blue);font-weight:600">Avec balance</th>'
+      +'<th style="padding:5px 10px;text-align:right;color:var(--blue);font-weight:600">Écart</th>'
+      +'</tr></thead><tbody>';
+    lignes.forEach(function(l){
+      var ecart=l.bal-l.fec;
+      var cls=Math.abs(ecart)<1?'color:var(--gray-m)':ecart>0?'color:var(--green-m)':'color:var(--red-m)';
+      var sign=ecart>0?'+':'';
+      html+='<tr style="border-bottom:1px solid var(--border)">'
+        +'<td style="padding:4px 10px;font-weight:500">'+l.lbl+'</td>'
+        +'<td style="padding:4px 10px;text-align:right;color:var(--gray-m)">'+fmtK(l.fec)+' €</td>'
+        +'<td style="padding:4px 10px;text-align:right;font-weight:600">'+fmtK(l.bal)+' €</td>'
+        +'<td style="padding:4px 10px;text-align:right;font-weight:600;'+cls+'">'+sign+fmtK(ecart)+' €</td>'
+        +'</tr>';
+    });
+    html+='</tbody></table>';
+    var balActif=F.totalActif,balPassif=F.totalPassif;
+    var ecartBilan=balActif-balPassif;
+    var okBal=Math.abs(ecartBilan)<balActif*0.005;
+    html+='<div style="margin-top:8px;padding:8px 12px;border-radius:6px;background:'+(okBal?'#d1fae5':'#fee2e2')+';font-size:11px">'
+      +'Balance : Actif=<strong>'+fmtK(balActif)+'</strong> — Passif=<strong>'+fmtK(balPassif)+'</strong> — Écart=<strong style="color:'+(okBal?'var(--green-m)':'var(--red-m)')+'">'+fmtK(ecartBilan)+' €</strong>'
+      +(okBal?' ✓ Bilan équilibré avec la balance':' ⚠ Déséquilibre résiduel')+'</div>';
+    html+='</div>';
+  }
+
+  document.getElementById('diagContent').innerHTML=html;
+  document.getElementById('diagPanel').style.display='block';
+}
+
+// ── IA ─────────────────────────────────────────────────────
+async function genAI(mode){
+  if(!D) return;
+  var Fn=D.Fn;var Fn1=D.Fn1;
+  var entite=document.getElementById('nomEntite').value||'—';
+  var secteur=document.getElementById('secteur').value;
+  var exN=document.getElementById('exerciceN').value||'N';
+  var ctx='Tu es Directeur de mission CAC Senior. Entité : '+entite+'. Secteur : '+secteur+'. Exercice : '+exN+'.\n'
+    +'CA='+fmtK(Fn.CA)+'€'+(Fn1?' N-1='+fmtK(Fn1.CA)+'€':'')+'\n'
+    +'EBE='+fmtK(Fn.EBE)+'€ (marge '+pct(Fn.margeEBE)+') REX='+fmtK(Fn.REX)+'€ RN='+fmtK(Fn.RN)+'€\n'
+    +'FRNG='+fmtK(Fn.FRNG)+'€ BFR='+fmtK(Fn.BFR)+'€ TN='+fmtK(Fn.TN)+'€\n'
+    +'Endettement/CP='+Fn.endettement.toFixed(2)+'x DetteNette/EBE='+Fn.detteNetteEBE.toFixed(1)+'x Liquidité='+Fn.liquidGen.toFixed(2)+'x\n'
+    +'CP='+fmtK(Fn.capitauxPropres)+'€ DettesFin='+fmtK(Fn.dettesFin)+'€ Tréso='+fmtK(Fn.tresorerie)+'€\n'
+    +'RésFinancier='+fmtK(Fn.resultatFin)+'€ RésExcep='+fmtK(Fn.resultatExcep)+'€';
+  var prompts={
+    global:ctx+'\n\nRédige une SYNTHÈSE GLOBALE (180 mots max) pour le Directeur de mission. (1) Situation générale en 2-3 phrases chiffrées, (2) 3 points de vigilance majeurs, (3) Orientation de la revue. Ton professionnel, prose directe.',
+    bilan:ctx+'\n\nAnalyse BILAN & STRUCTURE FINANCIÈRE (150 mots). Focus : structure actif/passif, FR/BFR/TN, endettement. 2-3 points d\'attention concrets.',
+    sig:ctx+'\n\nAnalyse COMPTE DE RÉSULTAT & SIG (150 mots). Focus : cascade SIG, causes variation résultat, charges financières, résultat exceptionnel.',
+    prog:ctx+'\n\nORIENTATIONS PROGRAMME DE CONTRÔLE (150 mots). (1) Axes prioritaires, (2) Zones d\'incertitude, (3) Points à valider en réunion d\'ouverture DAF.'
+  };
+  var tasks=mode==='all'
+    ?[{l:'aiL1',t:'aiT1',p:prompts.global},{l:'aiL2',t:'aiT2',p:prompts.bilan},{l:'aiL3',t:'aiT3',p:prompts.sig},{l:'aiL4',t:'aiT4',p:prompts.prog}]
+    :[{l:'aiL1',t:'aiT1',p:prompts.global}];
+  for(var i=0;i<tasks.length;i++){
+    var tk=tasks[i];
+    document.getElementById(tk.l).style.display='flex';document.getElementById(tk.t).style.display='none';
+    try{
+      var res=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:1000,messages:[{role:'user',content:tk.p}]})});
+      var data=await res.json();
+      var txt=data.content?data.content.map(function(c){return c.text||'';}).join('').trim():'Analyse indisponible.';
+      document.getElementById(tk.l).style.display='none';document.getElementById(tk.t).style.display='block';
+      document.getElementById(tk.t).textContent=txt;
+    }catch(e){
+      document.getElementById(tk.l).style.display='none';document.getElementById(tk.t).style.display='block';
+      document.getElementById(tk.t).textContent='Erreur de génération.';
+    }
+  }
+}
+</script>
+</body>
+</html>
