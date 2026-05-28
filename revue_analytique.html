@@ -613,7 +613,22 @@ RDV Eric Gonfrier 15/05/2025 : Conciliation à la demande du CRCA et BPSO. 5,2 M
 // ── STATE (var uniquement) ──────────────────────────────────
 var fecData = {n2:null, n1:null, n:null};
 var balanceData = {n2:null, n1:null, n:null};
+var compteLabels = {};   // numéro de compte → libellé (FEC/balance)
+var planComptable = {};  // numéro de compte → libellé (plan comptable importé, prioritaire)
 var D = null;
+// Libellé d'un compte : plan comptable prioritaire, puis correspondance la plus longue
+function libelleCompte(cpt){
+  if(planComptable[cpt]) return planComptable[cpt];
+  if(compteLabels[cpt]) return compteLabels[cpt];
+  // recherche du préfixe le plus long dans le plan comptable (ex: 411 pour 41100000)
+  var best='',bestLen=0;
+  [planComptable,compteLabels].forEach(function(src){
+    Object.keys(src).forEach(function(k){
+      if(k.length>bestLen&&k.length<cpt.length&&cpt.startsWith(k)){best=src[k];bestLen=k.length;}
+    });
+  });
+  return best;
+}
 var charts = {};
 var seuilsData = [];
 var efRowId = 0;
@@ -667,6 +682,7 @@ function parseFEC(text){
   var hi={};
   var aliases={
     compte:['comptenum','compte_num','numcompte','accountnum','compte'],
+    lib:['comptelib','compte_lib','libellecompte','libelle_compte','accountlib'],
     debit:['debit','montantdebit','debit_montant'],
     credit:['credit','montantcredit','credit_montant'],
     montant:['montant','amount'],
@@ -696,6 +712,10 @@ function parseFEC(text){
     }
     if(!soldes[cpt]) soldes[cpt]={d:0,c:0};
     soldes[cpt].d+=deb;soldes[cpt].c+=cred;rows++;
+    if(hi.lib!==undefined&&!compteLabels[cpt]){
+      var lb=(cols[hi.lib]||'').trim();
+      if(lb) compteLabels[cpt]=lb;
+    }
   }
   plog(rows+' lignes — '+Object.keys(soldes).length+' comptes','ok');
   return soldes;
@@ -1106,8 +1126,9 @@ function toggleEFDetail(id,prefixStr,btn){
     var diff=netN!==null&&netN1!==null?netN-netN1:null;
     var vp=diff!==null&&netN1?((diff/Math.abs(netN1))*100).toFixed(0)+'%':'—';
     var c2=diff===null?'':(diff>0?'var-pos':'var-neg');
+    var lib=libelleCompte(cpt);
     rows+='<tr class="detail-row">'
-      +'<td class="detail-row" style="padding:3px 10px 3px 32px;font-size:11px"><span class="cpt-badge">'+cpt+'</span></td>'
+      +'<td class="detail-row" style="padding:3px 10px 3px 32px;font-size:11px"><span class="cpt-badge">'+cpt+'</span>'+(lib?'<span style="color:var(--gray)">'+lib+'</span>':'')+'</td>'
       +'<td class="num" style="font-size:11px;padding:3px 10px">'+(netN!==null?fmtK(netN):'')+'</td>'
       +'<td style="padding:3px 10px"></td>'
       +'<td class="num" style="font-size:11px;padding:3px 10px">'+(netN1!==null?fmtK(netN1):'')+'</td>'
