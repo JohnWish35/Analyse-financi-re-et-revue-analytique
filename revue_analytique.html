@@ -526,7 +526,10 @@ RDV Eric Gonfrier 15/05/2025 : Conciliation à la demande du CRCA et BPSO. 5,2 M
 
 <!-- SYNTHESE -->
 <div class="section content" id="sec-synthese">
-  <div class="sec-title">Tableau de bord direction <span class="year-tag" id="yd1"></span></div>
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:10px">
+    <div class="sec-title" style="margin-bottom:0">Tableau de bord direction <span class="year-tag" id="yd1"></span></div>
+    <button onclick="exportRevueWord()" style="background:var(--blue);color:#fff;border:none;padding:8px 16px;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:6px">📄 Export Word — Revue analytique</button>
+  </div>
   <div class="cards-grid" id="kpiGrid"></div>
   <div class="row2">
     <div class="panel"><div class="panel-hdr"><h3>Évolution CA & EBE</h3></div><div class="panel-body"><div class="chart-wrap h220"><canvas id="chartCA"></canvas></div></div></div>
@@ -1669,6 +1672,172 @@ async function genAI(mode){
       document.getElementById(tk.t).textContent='Erreur de génération.';
     }
   }
+}
+
+// ── EXPORT WORD — REVUE ANALYTIQUE ─────────────────────────
+function exportRevueWord(){
+  if(!D){alert('Générez d\'abord l\'analyse (onglet Import FEC).');return;}
+  var Fn=D.Fn,Fn1=D.Fn1,annees=D.annees,series=D.series;
+  var entite=document.getElementById('nomEntite').value||'—';
+  var secteur=document.getElementById('secteur').value||'—';
+  var exN=document.getElementById('exerciceN').value||'—';
+  var dateEdit=new Date().toLocaleDateString('fr-FR');
+
+  function eur(v){return (v===null||v===undefined||isNaN(v))?'—':fmtK(v)+' €';}
+  function aiText(id){var el=document.getElementById(id);if(!el) return '';var t=(el.textContent||'').trim();return (t&&t!=='Erreur de génération.'&&t!=='Analyse indisponible.'&&t!=='Génération…')?t:'';}
+  function esc(s){return (s==null?'':String(s)).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+  // Cellule de variation N/N-1
+  function varCell(cur,prev,inv){
+    if(prev===null||prev===undefined||prev===0||isNaN(prev)) return '<td class="num">—</td>';
+    var vr=(cur-prev)/Math.abs(prev);
+    var good=inv?vr<0:vr>0;
+    var color=good?'#065f46':'#7f1d1d';
+    return '<td class="num" style="color:'+color+'">'+(vr>=0?'+':'')+(vr*100).toFixed(1)+'%</td>';
+  }
+
+  // En-têtes d'années pour tableaux multi-exercices
+  var yearHdrs=annees.map(function(a){return '<th class="num">'+esc(a)+'</th>';}).join('');
+
+  // Bloc KPIs clés
+  var kpiRows=[
+    {l:'Chiffre d\'affaires',v:Fn.CA,p:Fn1?Fn1.CA:null,inv:false},
+    {l:'Valeur ajoutée',v:Fn.VA,p:Fn1?Fn1.VA:null,inv:false},
+    {l:'EBE',v:Fn.EBE,p:Fn1?Fn1.EBE:null,inv:false},
+    {l:'Résultat d\'exploitation',v:Fn.REX,p:Fn1?Fn1.REX:null,inv:false},
+    {l:'Résultat financier',v:Fn.resultatFin,p:Fn1?Fn1.resultatFin:null,inv:false},
+    {l:'Résultat net',v:Fn.RN,p:Fn1?Fn1.RN:null,inv:false}
+  ].map(function(r){
+    return '<tr><td>'+r.l+'</td><td class="num">'+eur(r.v)+'</td><td class="num">'+(r.p!=null?eur(r.p):'—')+'</td>'+varCell(r.v,r.p,r.inv)+'</tr>';
+  }).join('');
+
+  // Bloc marges & ratios
+  var ratioRows=[
+    {l:'Marge EBE',v:pct(Fn.margeEBE),ref:'> 15%'},
+    {l:'Marge REX',v:pct(Fn.margeREX),ref:'> 8%'},
+    {l:'Marge nette',v:pct(Fn.margeNette),ref:'> 4%'},
+    {l:'ROE (rentabilité CP)',v:pct(Fn.ROE),ref:'> 8%'},
+    {l:'Autonomie financière',v:pct(Fn.autonomie),ref:'> 40%'},
+    {l:'Endettement / CP',v:Fn.endettement.toFixed(2)+'x',ref:'< 1x'},
+    {l:'Dette nette / EBE',v:Fn.detteNetteEBE.toFixed(1)+'x',ref:'< 3x'},
+    {l:'Liquidité générale',v:Fn.liquidGen.toFixed(2)+'x',ref:'> 1,5'},
+    {l:'Couverture des intérêts',v:Fn.couvertInterets.toFixed(1)+'x',ref:'> 3x'},
+    {l:'Délai recouvrement clients',v:Fn.delaiCreances.toFixed(0)+' j',ref:'< 60 j'}
+  ].map(function(r){return '<tr><td>'+r.l+'</td><td class="num">'+r.v+'</td><td class="num" style="color:#6b7280">'+r.ref+'</td></tr>';}).join('');
+
+  // Bloc bilan — Actif / Passif
+  var actifRows=[
+    {l:'Immobilisations nettes',k:'immoNettes'},
+    {l:'Stocks',k:'stocks'},
+    {l:'Créances clients',k:'creancesCli'},
+    {l:'Autres créances',k:'autresCreances'},
+    {l:'Trésorerie & VMP',k:'tresorerie'}
+  ].map(function(r){return '<tr><td>'+r.l+'</td><td class="num">'+eur(Fn[r.k])+'</td><td class="num">'+(Fn1?eur(Fn1[r.k]):'—')+'</td>'+varCell(Fn[r.k],Fn1?Fn1[r.k]:null,false)+'</tr>';}).join('');
+  actifRows+='<tr class="tot"><td>TOTAL ACTIF</td><td class="num">'+eur(Fn.totalActif)+'</td><td class="num">'+(Fn1?eur(Fn1.totalActif):'—')+'</td>'+varCell(Fn.totalActif,Fn1?Fn1.totalActif:null,false)+'</tr>';
+
+  var passifRows=[
+    {l:'Capitaux propres',k:'capitauxPropres'},
+    {l:'Provisions risques & charges',k:'provisions'},
+    {l:'Dettes financières',k:'dettesFin'},
+    {l:'Dettes d\'exploitation',k:'dettesExp'}
+  ].map(function(r){return '<tr><td>'+r.l+'</td><td class="num">'+eur(Fn[r.k])+'</td><td class="num">'+(Fn1?eur(Fn1[r.k]):'—')+'</td>'+varCell(Fn[r.k],Fn1?Fn1[r.k]:null,r.k==='dettesFin'||r.k==='dettesExp')+'</tr>';}).join('');
+  passifRows+='<tr class="tot"><td>TOTAL PASSIF</td><td class="num">'+eur(Fn.totalPassif)+'</td><td class="num">'+(Fn1?eur(Fn1.totalPassif):'—')+'</td>'+varCell(Fn.totalPassif,Fn1?Fn1.totalPassif:null,false)+'</tr>';
+
+  var ecart=Fn.totalActif-Fn.totalPassif;
+  var equilibre='<p style="margin:4px 0 0;font-size:10pt;color:'+(Math.abs(ecart)<Math.max(1000,Fn.totalActif*0.005)?'#065f46':'#7f1d1d')+'">Écart Actif − Passif : '+eur(ecart)+(Math.abs(ecart)<Math.max(1000,Fn.totalActif*0.005)?' (bilan équilibré)':' — à investiguer').replace(/&/g,'&amp;')+'</p>';
+
+  // FR / BFR / TN
+  var fbtRows=[
+    {l:'Fonds de roulement net global (FRNG)',k:'FRNG'},
+    {l:'Besoin en fonds de roulement (BFR)',k:'BFR'},
+    {l:'Trésorerie nette (TN)',k:'TN'}
+  ].map(function(r){
+    var cells=series.map(function(s){return '<td class="num">'+eur(s[r.k])+'</td>';}).join('');
+    return '<tr><td>'+r.l+'</td>'+cells+'</tr>';
+  }).join('');
+
+  // SIG comparé (multi-exercices)
+  var sigDef=[{l:'Chiffre d\'affaires',k:'CA'},{l:'Valeur ajoutée',k:'VA'},{l:'EBE',k:'EBE'},{l:'Résultat d\'exploitation',k:'REX'},{l:'Résultat financier',k:'resultatFin'},{l:'Résultat courant',k:'resultatCourant'},{l:'Résultat exceptionnel',k:'resultatExcep'},{l:'Résultat net',k:'RN'}];
+  var sigRows=sigDef.map(function(r){
+    var cells=series.map(function(s){return '<td class="num">'+eur(s[r.k])+'</td>';}).join('');
+    var pctCA=Fn.CA?pct(Fn[r.k]/Fn.CA):'—';
+    return '<tr><td>'+r.l+'</td>'+cells+'<td class="num" style="color:#6b7280">'+pctCA+'</td></tr>';
+  }).join('');
+
+  // Alertes
+  var alerts=buildAlerts();
+  var alertRows=alerts.map(function(a){
+    var lvl=a.t==='red'?'Critique':a.t==='amber'?'Vigilance':'OK';
+    var col=a.t==='red'?'#7f1d1d':a.t==='amber'?'#92400e':'#065f46';
+    return '<tr><td style="color:'+col+';font-weight:bold">'+esc(lvl)+'</td><td><b>'+esc(a.title)+'</b><br>'+esc(a.desc)+'</td></tr>';
+  }).join('');
+
+  // Synthèses IA (si générées)
+  function aiBlock(title,id){
+    var t=aiText(id);
+    if(!t) return '';
+    return '<h2>'+esc(title)+'</h2><p style="white-space:pre-wrap">'+esc(t)+'</p>';
+  }
+  var aiGlobal=aiText('aiT1');
+  var iaSection=
+    aiBlock('Analyse du bilan & de la structure financière','aiT2')
+    +aiBlock('Analyse du compte de résultat & des SIG','aiT3')
+    +aiBlock('Orientations du programme de contrôle','aiT4');
+
+  var html=''
+   +'<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40"><head><meta charset="utf-8">'
+   +'<title>Revue analytique — '+esc(entite)+'</title>'
+   +'<style>'
+   +'body{font-family:Calibri,Arial,sans-serif;font-size:11pt;color:#1a1a2e}'
+   +'h1{color:#1e3a8a;font-size:18pt;margin:0 0 4px}'
+   +'h2{color:#1e3a8a;font-size:13pt;border-bottom:1.5px solid #3b82f6;padding-bottom:3px;margin:18px 0 8px}'
+   +'.meta{color:#374151;font-size:10pt;margin:0 0 2px}'
+   +'table{border-collapse:collapse;width:100%;margin:6px 0 10px;font-size:10pt}'
+   +'th{background:#1e3a8a;color:#fff;padding:5px 8px;text-align:left;font-size:9.5pt}'
+   +'th.num,td.num{text-align:right}'
+   +'td{padding:4px 8px;border-bottom:1px solid #e5e7eb}'
+   +'tr.tot td{background:#dbeafe;font-weight:bold;border-bottom:2px solid #1e3a8a}'
+   +'.footer{margin-top:24px;font-size:8.5pt;color:#9ca3af;border-top:1px solid #e5e7eb;padding-top:6px}'
+   +'</style></head><body>'
+   +'<h1>Revue analytique préliminaire</h1>'
+   +'<p class="meta"><b>Entité :</b> '+esc(entite)+'</p>'
+   +'<p class="meta"><b>Secteur :</b> '+esc(secteur)+' &nbsp;|&nbsp; <b>Exercice N :</b> '+esc(exN)+'</p>'
+   +'<p class="meta"><b>Date d\'édition :</b> '+esc(dateEdit)+'</p>'
+
+   +(aiGlobal?'<h2>Synthèse générale du Directeur de mission</h2><p style="white-space:pre-wrap">'+esc(aiGlobal)+'</p>':'')
+
+   +'<h2>Indicateurs clés de gestion</h2>'
+   +'<table><tr><th>Indicateur</th><th class="num">N</th><th class="num">N-1</th><th class="num">Var. N/N-1</th></tr>'+kpiRows+'</table>'
+
+   +'<h2>Ratios & marges</h2>'
+   +'<table><tr><th>Ratio</th><th class="num">N</th><th class="num">Référence</th></tr>'+ratioRows+'</table>'
+
+   +'<h2>Bilan — Actif</h2>'
+   +'<table><tr><th>Poste</th><th class="num">N</th><th class="num">N-1</th><th class="num">Var.</th></tr>'+actifRows+'</table>'
+   +'<h2>Bilan — Passif</h2>'
+   +'<table><tr><th>Poste</th><th class="num">N</th><th class="num">N-1</th><th class="num">Var.</th></tr>'+passifRows+'</table>'
+   +equilibre
+
+   +'<h2>Équilibre financier</h2>'
+   +'<table><tr><th>Agrégat</th>'+yearHdrs+'</tr>'+fbtRows+'</table>'
+
+   +'<h2>Soldes intermédiaires de gestion (SIG)</h2>'
+   +'<table><tr><th>Solde</th>'+yearHdrs+'<th class="num">% CA (N)</th></tr>'+sigRows+'</table>'
+
+   +'<h2>Signaux d\'alerte & zones de risque</h2>'
+   +'<table><tr><th style="width:90px">Niveau</th><th>Constat</th></tr>'+alertRows+'</table>'
+
+   +iaSection
+
+   +'<div class="footer">Document généré automatiquement à partir des données FEC — Revue analytique préliminaire CAC. À usage interne du dossier de travail. Les analyses narratives (le cas échéant) sont des aides à la rédaction et doivent être revues par le professionnel.</div>'
+   +'</body></html>';
+
+  var blob=new Blob(['﻿'+html],{type:'application/msword'});
+  var url=URL.createObjectURL(blob);
+  var a=document.createElement('a');
+  var safe=entite.replace(/[^a-zA-Z0-9_-]+/g,'_').replace(/^_+|_+$/g,'')||'entite';
+  a.href=url;a.download='Revue_analytique_'+safe+'.doc';
+  document.body.appendChild(a);a.click();
+  setTimeout(function(){document.body.removeChild(a);URL.revokeObjectURL(url);},100);
 }
 </script>
 </body>
