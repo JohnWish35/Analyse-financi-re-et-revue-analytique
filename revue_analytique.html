@@ -745,12 +745,18 @@ function parseBalance(text){
 
   // Colonne compte
   var hi_cpt=-1;
-  ['compte','numcompte','ncompte','numero','comptenum','code'].forEach(function(k){
+  ['comptenum','numcompte','ncompte','numerodecompte','numero','compte','code'].forEach(function(k){
     if(hi_cpt<0) headers.forEach(function(h,i){if(hi_cpt<0&&h.indexOf(k)>=0) hi_cpt=i;});
   });
   if(hi_cpt<0) hi_cpt=0;
 
-  // Colonnes solde final (priorité 1 : "solde" + "deb"/"cred")
+  // Colonne libellé (pour enrichir le registre de labels)
+  var hi_lib=-1;
+  ['comptelib','nomducompte','libellecompte','libelle','nomcompte'].forEach(function(k){
+    if(hi_lib<0) headers.forEach(function(h,i){if(hi_lib<0&&h.indexOf(k)>=0) hi_lib=i;});
+  });
+
+  // Colonnes solde final (priorité 1 : colonne avec "solde"+"deb" ET colonne "solde"+"cred")
   var hi_sd=-1,hi_sc=-1;
   headers.forEach(function(h,i){
     var hasSolde=h.indexOf('solde')>=0;
@@ -758,7 +764,7 @@ function parseBalance(text){
     if(hasSolde&&h.indexOf('cred')>=0&&hi_sc<0) hi_sc=i;
   });
 
-  // Priorité 2 : dernière colonne "debit" / "credit" (cas balance avec mvts + soldes)
+  // Priorité 2 : colonnes "debit" / "credit" (FEC grand-livre ou balance avec mouvements)
   if(hi_sd<0||hi_sc<0){
     var lastD=-1,lastC=-1;
     headers.forEach(function(h,i){
@@ -769,17 +775,17 @@ function parseBalance(text){
     if(hi_sc<0) hi_sc=lastC;
   }
 
-  // Priorité 3 : colonne "solde" unique signée
+  // Priorité 3 : colonne de solde net signé unique (ex. "Somme de Solde", "Solde")
   var hi_solde=-1;
   if(hi_sd<0&&hi_sc<0){
-    headers.forEach(function(h,i){if(h==='solde'&&hi_solde<0) hi_solde=i;});
+    headers.forEach(function(h,i){if(h.indexOf('solde')>=0&&hi_solde<0) hi_solde=i;});
   }
 
   if(hi_sd<0&&hi_sc<0&&hi_solde<0){
     plog('Balance: colonnes solde non détectées — headers: '+headers.join('|'),'err');
     return null;
   }
-  plog('Balance: col_cpt='+hi_cpt+(hi_sd>=0?', soldeDeb='+hi_sd:'')+(hi_sc>=0?', soldeCred='+hi_sc:'')+(hi_solde>=0?', solde='+hi_solde:''),'ok');
+  plog('Balance: col_cpt='+hi_cpt+(hi_lib>=0?', lib='+hi_lib:'')+(hi_sd>=0?', soldeDeb='+hi_sd:'')+(hi_sc>=0?', soldeCred='+hi_sc:'')+(hi_solde>=0?', solde net='+hi_solde:''),'ok');
 
   function parseNum(s){return parseFloat((s||'0').replace(/\s/g,'').replace(',','.').replace(/[^\d.-]/g,''))||0;}
   var soldes={};var rows=0;
@@ -793,8 +799,16 @@ function parseBalance(text){
     if(hi_sc>=0) sc=parseNum(cols[hi_sc]);
     if(hi_solde>=0){var net=parseNum(cols[hi_solde]);if(net>=0) sd=net; else sc=-net;}
     if(sd===0&&sc===0) continue;
-    soldes[cpt]={d:Math.abs(sd),c:Math.abs(sc)};
+    // Agrégation (plusieurs lignes possibles par compte dans un grand-livre)
+    if(!soldes[cpt]) soldes[cpt]={d:0,c:0};
+    soldes[cpt].d+=Math.abs(sd);
+    soldes[cpt].c+=Math.abs(sc);
     rows++;
+    // Capture du libellé
+    if(hi_lib>=0&&!compteLabels[cpt]){
+      var lb=(cols[hi_lib]||'').trim();
+      if(lb) compteLabels[cpt]=lb;
+    }
   }
   if(!rows){plog('Balance: aucun compte chargé — format non reconnu ?','warn');return null;}
   var totD=0,totC=0;
@@ -928,6 +942,10 @@ function buildFinancials(soldes){
   var IS=raw(['695','696','697','698','699']).d-cred(['699']);
   var RN_calc=resultatCourant+resultatExcep-participation-IS;
   var RN=Math.abs(rnExercice)>100?rnExercice:RN_calc;
+  // Recalcul avec le bon résultat (quand compte 12 est vide, résultat encore en classes 6-7)
+  var rnCP=Math.abs(rnExercice)>100?rnExercice:RN_calc;
+  capitauxPropres=capitalSocial+primes+reserves+reportNouvel+rnCP+autresCP;
+  totalPassif=capitauxPropres+provisions+dettesFin+dettesExp;
   var margeCom=(ventesMarch+varStocksMarch)-achatsMarch;
   var prodExercice=CA_HT+varStocksProd+prodImmo;
   var FRNG=capitauxPropres+provisions+dettesFin-totalActifImmo;
@@ -940,7 +958,7 @@ function buildFinancials(soldes){
     autresCreances:autresCreances,VMP:VMP,disponibilites:disponibilites,tresorerie:tresorerie,
     totalActifImmo:totalActifImmo,totalActifCirc:totalActifCirc,totalActif:totalActif,
     capitalSocial:capitalSocial,primes:primes,reserves:reserves,reportNouvel:reportNouvel,
-    rnExercice:rnExercice,capitauxPropres:capitauxPropres,autresCP:autresCP,
+    rnExercice:rnExercice,rnCP:rnCP,capitauxPropres:capitauxPropres,autresCP:autresCP,
     provisions:provisions,dettesFin:dettesFin,avancesClients:avancesClients,dettesExp:dettesExp,dettesFournisseurs:dettesFournisseurs,
     dettesPersonnel:dettesPersonnel,dettesSociales:dettesSociales,dettesFiscales:dettesFiscales,
     autresDettes:autresDettes,totalPassif:totalPassif,
@@ -1046,6 +1064,8 @@ function generateAnalysis(){
   var Fn1=snN1?buildFinancials(snN1):null;
   var Fn2=snN2?buildFinancials(snN2):null;
   plog('CA='+fmt(Fn.CA)+' EBE='+fmt(Fn.EBE)+' RN='+fmt(Fn.RN),'ok');
+  var ecartBilan=Fn.totalActif-Fn.totalPassif;
+  plog('Actif='+fmt(Fn.totalActif)+' Passif='+fmt(Fn.totalPassif)+' Écart='+fmtK(ecartBilan)+'€'+(Math.abs(ecartBilan)<Math.max(1000,Fn.totalActif*0.005)?' ✓ équilibré':' ⚠ à vérifier'),Math.abs(ecartBilan)<Math.max(1000,Fn.totalActif*0.005)?'ok':'warn');
   buildDiagnostic(fecData.n,Fn,balanceData.n);
   var annees=[Fn2?'N-2':null,Fn1?'N-1':null,'N'].filter(function(x){return x!==null;});
   var series=[Fn2,Fn1,Fn].filter(function(x){return x!==null;});
