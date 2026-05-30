@@ -745,16 +745,42 @@ function parseBalance(text){
 
   // Colonne compte
   var hi_cpt=-1;
-  ['comptenum','numcompte','ncompte','numerodecompte','numero','compte','code'].forEach(function(k){
-    if(hi_cpt<0) headers.forEach(function(h,i){if(hi_cpt<0&&h.indexOf(k)>=0) hi_cpt=i;});
+  // Cherche d'abord des alias précis, en excluant les colonnes "lib" (libellés)
+  ['comptenum','numcompte','ncompte','numerodecompte','numero'].forEach(function(k){
+    if(hi_cpt<0) headers.forEach(function(h,i){if(hi_cpt<0&&h.indexOf(k)>=0&&h.indexOf('lib')<0) hi_cpt=i;});
   });
+  // Alias génériques : 'compte' mais pas 'comptelib', 'code', 'etiquette' (pivot Excel)
+  if(hi_cpt<0) headers.forEach(function(h,i){if(hi_cpt<0&&h.indexOf('compte')>=0&&h.indexOf('lib')<0) hi_cpt=i;});
+  if(hi_cpt<0) headers.forEach(function(h,i){if(hi_cpt<0&&(h==='code'||h.indexOf('etiquette')>=0)) hi_cpt=i;});
   if(hi_cpt<0) hi_cpt=0;
+
+  // Validation : vérifier que hi_cpt pointe bien vers des numéros (commence par un chiffre)
+  // Sinon scanner toutes les colonnes pour trouver la bonne
+  var cptValid=false;
+  for(var vi=1;vi<Math.min(lines.length,8);vi++){
+    var vc=lines[vi].split(sep);
+    if(vc[hi_cpt]&&/^\d/.test(vc[hi_cpt].trim().replace(/[\s."]/g,''))) {cptValid=true;break;}
+  }
+  if(!cptValid){
+    outer_cpt: for(var ci=0;ci<headers.length;ci++){
+      for(var vi2=1;vi2<Math.min(lines.length,8);vi2++){
+        var vc2=lines[vi2].split(sep);
+        if(vc2[ci]&&/^\d/.test(vc2[ci].trim().replace(/[\s."]/g,''))) {hi_cpt=ci;break outer_cpt;}
+      }
+    }
+  }
 
   // Colonne libellé (pour enrichir le registre de labels)
   var hi_lib=-1;
   ['comptelib','nomducompte','libellecompte','libelle','nomcompte'].forEach(function(k){
-    if(hi_lib<0) headers.forEach(function(h,i){if(hi_lib<0&&h.indexOf(k)>=0) hi_lib=i;});
+    if(hi_lib<0) headers.forEach(function(h,i){if(hi_lib<0&&i!==hi_cpt&&h.indexOf(k)>=0) hi_lib=i;});
   });
+  // Fallback : colonne texte non numérique la plus proche du compte
+  if(hi_lib<0){
+    headers.forEach(function(h,i){
+      if(hi_lib<0&&i!==hi_cpt&&h.indexOf('lib')>=0) hi_lib=i;
+    });
+  }
 
   // Colonnes solde final (priorité 1 : colonne avec "solde"+"deb" ET colonne "solde"+"cred")
   var hi_sd=-1,hi_sc=-1;
