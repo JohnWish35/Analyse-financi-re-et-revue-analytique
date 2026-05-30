@@ -899,40 +899,72 @@ function buildFinancials(soldes){
   function cred(pfx){return Math.max(0,raw(pfx).crediteur);}
   function credS(pfx){return raw(pfx).crediteur;}
 
+  // ── ACTIF IMMOBILISÉ (classe 2) ──
   var immoBrut=raw(['20','21','22','23','24','25','26','27']).d;
   var amort=cred(['28','29']);
   var immoNettes=Math.max(0,immoBrut-amort);
   var titresBrut=raw(['261','262','263','264','265','266','267','271','272','273','274','275','276']).d;
   var titresPartic=Math.max(0,titresBrut-cred(['296','297']));
+  // ── STOCKS (classe 3) ──
   var stocksBrut=raw(['31','32','33','34','35','36','37']).d;
   var stocks=Math.max(0,stocksBrut-cred(['39']));
-  var creancesCli=Math.max(0,raw(['411','412','413','416','417','418']).debiteur-cred(['491']));
-  var autresCreances=Math.max(0,raw(['409','425','445','451','455','458','465','467','468','44566','44567','44580','44583','44586']).debiteur);
-  var VMP=Math.max(0,raw(['50']).debiteur-cred(['59']));
-  var disponibilites=Math.max(0,raw(['512','514','515','516','517','518','53','54','58']).debiteur);
+
+  // ── CLASSES 4 & 5 : classement compte par compte selon le sens du solde ──
+  // (évite l'écrêtage Math.max(0) sur des agrégats mixtes et le double-comptage)
+  var b={creancesCli:0,autresCreances:0,VMP:0,disponibilites:0,
+         dettesFournisseurs:0,avancesClients:0,dettesPersonnel:0,dettesSociales:0,
+         dettesFiscales:0,autresDettes:0,decouverts:0};
+  Object.keys(soldes).forEach(function(cpt){
+    var cls=cpt[0];
+    if(cls!=='4'&&cls!=='5') return;
+    var v=soldes[cpt];var net=v.d-v.c; // >0 = débiteur (actif) ; <0 = créditeur (passif)
+    if(Math.abs(net)<0.005) return;
+    var p2=cpt.substring(0,2),p3=cpt.substring(0,3);
+    // Classe 5 — trésorerie / financiers
+    if(p2==='50'){b.VMP+=Math.max(0,net);return;}
+    if(p2==='51'){if(p3==='519') b.decouverts+=Math.max(0,-net); else b.disponibilites+=Math.max(0,net);return;}
+    if(p2==='53'||p2==='54'||p2==='58'){b.disponibilites+=Math.max(0,net);return;}
+    if(cls==='5'){if(net>0) b.disponibilites+=net; else b.autresDettes+=-net;return;}
+    // Classe 4 — tiers
+    if(p3==='491'){b.creancesCli-=Math.abs(net);return;}                 // dépréciation clients
+    if(['411','412','413','416','417','418'].indexOf(p3)>=0){if(net>0) b.creancesCli+=net; else b.avancesClients+=-net;return;}
+    if(p3==='419'){b.avancesClients+=Math.abs(net);return;}              // avances reçues clients
+    if(p3==='409'){if(net>0) b.autresCreances+=net; else b.dettesFournisseurs+=-net;return;} // avances versées fournisseurs
+    if(['401','403','404','405','408'].indexOf(p3)>=0){if(net<0) b.dettesFournisseurs+=-net; else b.autresCreances+=net;return;}
+    if(p2==='42'){if(net<0) b.dettesPersonnel+=-net; else b.autresCreances+=net;return;}
+    if(p2==='43'){if(net<0) b.dettesSociales+=-net; else b.autresCreances+=net;return;}
+    if(p2==='44'){if(net<0) b.dettesFiscales+=-net; else b.autresCreances+=net;return;} // TVA déductible (débit) = créance
+    // 45x comptes courants, 46x divers, 47x transitoires, 48x régularisations
+    if(net>0) b.autresCreances+=net; else b.autresDettes+=-net;
+  });
+  var creancesCli=Math.max(0,b.creancesCli);
+  var autresCreances=b.autresCreances;
+  var VMP=b.VMP;
+  var disponibilites=b.disponibilites;
   var tresorerie=disponibilites+VMP;
   var totalActifImmo=immoNettes;
   var totalActifCirc=stocks+creancesCli+autresCreances+tresorerie;
   var totalActif=totalActifImmo+totalActifCirc;
 
+  // ── PASSIF — Capitaux propres (classe 1) ──
   var capitalSocial=cred(['101','102','103','108']);
   var primes=cred(['104','105']);
   var reserves=cred(['106','107']);
   var reportNouvel=credS(['11']);
   var rnExercice=credS(['12']);
   var autresCP=cred(['13','14']);
-  var capitauxPropres=capitalSocial+primes+reserves+reportNouvel+rnExercice+autresCP;
   var provisions=cred(['15']);
-  var decouverts=cred(['519']);
+  var decouverts=b.decouverts;            // 519 déjà capturé dans la boucle classe 5
   var dettesFin=cred(['16'])+decouverts;
-  var avancesClients=cred(['419']);
-  var dettesFournisseurs=cred(['401','403','404','405','408']);
-  var dettesPersonnel=cred(['421','422','424','425','426','427','428']);
-  var dettesSociales=cred(['431','437','438']);
-  var dettesFiscales=cred(['441','442','443','444','445','447','448']);
-  var autresDettes=cred(['451','455','458','464','465','467','468','487']);
+  var avancesClients=b.avancesClients;
+  var dettesFournisseurs=b.dettesFournisseurs;
+  var dettesPersonnel=b.dettesPersonnel;
+  var dettesSociales=b.dettesSociales;
+  var dettesFiscales=b.dettesFiscales;
+  var autresDettes=b.autresDettes;
   var dettesExp=avancesClients+dettesFournisseurs+dettesPersonnel+dettesSociales+dettesFiscales+autresDettes;
-  var totalPassif=capitauxPropres+provisions+dettesFin+dettesExp;
+  // capitauxPropres et totalPassif : calculés après le résultat (cf. rnCP plus bas)
+  var capitauxPropres=0,totalPassif=0;
 
   var ventesMarch=cred(['707']);
   var ventesProduits=cred(['701','702','703','704','705','706','708']);
@@ -967,9 +999,12 @@ function buildFinancials(soldes){
   var participation=raw(['691']).d;
   var IS=raw(['695','696','697','698','699']).d-cred(['699']);
   var RN_calc=resultatCourant+resultatExcep-participation-IS;
-  var RN=Math.abs(rnExercice)>100?rnExercice:RN_calc;
-  // Recalcul avec le bon résultat (quand compte 12 est vide, résultat encore en classes 6-7)
-  var rnCP=Math.abs(rnExercice)>100?rnExercice:RN_calc;
+  // Résultat injecté au bilan = solde net des classes 1-5 (= produits − charges quand la
+  // balance est cohérente). Calculé comme figure d'équilibre pour garantir Actif = Passif.
+  var passifSansRN=capitalSocial+primes+reserves+reportNouvel+autresCP+provisions+dettesFin+dettesExp;
+  var rnCP=totalActif-passifSansRN;
+  // RN affiché : compte 12 si soldé, sinon résultat du bilan (cohérent avec les capitaux propres)
+  var RN=Math.abs(rnExercice)>100?rnExercice:rnCP;
   capitauxPropres=capitalSocial+primes+reserves+reportNouvel+rnCP+autresCP;
   totalPassif=capitauxPropres+provisions+dettesFin+dettesExp;
   var margeCom=(ventesMarch+varStocksMarch)-achatsMarch;
