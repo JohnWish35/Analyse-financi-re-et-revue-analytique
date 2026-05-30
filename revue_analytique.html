@@ -879,16 +879,24 @@ function loadBalance(input,ex){
 }
 
 // ── MERGE FEC + BALANCE ─────────────────────────────────────
-// Pour les classes 1-5 (bilan), la balance est source de vérité.
-// Pour les classes 6-7 (résultat), on conserve les cumuls FEC.
+// La balance est source de vérité pour TOUTES les classes qu'elle couvre,
+// afin de garantir la cohérence bilan ↔ compte de résultat (même source).
+// Le FEC n'est conservé que pour les classes absentes de la balance
+// (typiquement les classes 6-7 quand la balance ne contient que le bilan).
 function mergeWithBalance(fecSoldes,balSoldes){
   if(!balSoldes) return fecSoldes;
+  // Classes effectivement présentes dans la balance
+  var balClasses={};
+  Object.keys(balSoldes).forEach(function(cpt){if(/^\d/.test(cpt)) balClasses[cpt[0]]=true;});
   var merged={};
-  Object.keys(fecSoldes).forEach(function(cpt){merged[cpt]=fecSoldes[cpt];});
-  Object.keys(balSoldes).forEach(function(cpt){
-    var cls=cpt[0];
-    if(cls>='1'&&cls<='5') merged[cpt]=balSoldes[cpt];
-  });
+  // FEC : uniquement les classes que la balance ne couvre pas
+  Object.keys(fecSoldes).forEach(function(cpt){if(!balClasses[cpt[0]]) merged[cpt]=fecSoldes[cpt];});
+  // Balance : prioritaire sur toutes ses classes
+  Object.keys(balSoldes).forEach(function(cpt){merged[cpt]=balSoldes[cpt];});
+  if(balClasses['6']||balClasses['7'])
+    plog('Balance complète (classes 6-7 présentes) → FEC ignoré pour le résultat, source unique cohérente','ok');
+  else
+    plog('Balance = bilan seul (classes 1-5) → résultat repris du FEC','warn');
   return merged;
 }
 
