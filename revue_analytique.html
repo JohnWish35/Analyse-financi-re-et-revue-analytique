@@ -144,14 +144,73 @@ table.anal tr:hover td{background:#fafbfc}
 .detail-row{background:#fafbfc}
 .detail-row td{padding:3px 10px 3px 32px;font-size:11px;color:var(--gray)}
 .cpt-badge{background:#f1f5f9;color:var(--blue);border-radius:3px;padding:1px 5px;font-size:10px;font-weight:600;margin-right:6px;font-family:monospace}
+/* ── DOSSIER HOME ─────────────────────────────────────────── */
+#dossierHome{display:flex;flex-direction:column;min-height:100vh;background:#f4f5f7}
+#appMain{display:none}
+.dh-hdr{background:var(--blue);color:#fff;padding:22px 32px;display:flex;align-items:center;justify-content:space-between}
+.dh-hdr h1{font-size:18px;font-weight:700;letter-spacing:-.3px}
+.dh-hdr p{font-size:12px;opacity:.65;margin-top:3px}
+.dh-body{padding:28px 32px;flex:1}
+.dh-toolbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:22px;flex-wrap:wrap;gap:10px}
+.dh-toolbar h2{font-size:14px;font-weight:700;color:var(--gray)}
+.btn-new{background:var(--blue);color:#fff;border:none;padding:10px 20px;border-radius:7px;font-size:13px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:7px}
+.btn-new:hover{background:#1e40af}
+.dossiers-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:16px}
+.dossier-card{background:#fff;border:1px solid var(--border);border-radius:12px;padding:18px 20px;cursor:pointer;transition:all .18s;position:relative;box-shadow:var(--shadow)}
+.dossier-card:hover{border-color:var(--blue-m);box-shadow:0 4px 14px rgba(30,58,138,.1);transform:translateY(-1px)}
+.dossier-card .dc-name{font-size:14px;font-weight:700;color:var(--blue);margin-bottom:2px;padding-right:28px;word-break:break-word}
+.dossier-card .dc-ex{font-size:11px;color:var(--gray-m);margin-bottom:10px}
+.dossier-card .dc-kpis{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:12px}
+.dossier-card .dc-kpi{background:var(--gray-l);border-radius:6px;padding:6px 9px}
+.dossier-card .dc-kpi .dk-label{font-size:9px;color:var(--gray-m);font-weight:600;text-transform:uppercase;letter-spacing:.3px}
+.dossier-card .dc-kpi .dk-val{font-size:13px;font-weight:700;color:var(--gray)}
+.dossier-card .dc-footer{display:flex;align-items:center;justify-content:space-between;border-top:1px solid var(--border);padding-top:10px;margin-top:4px}
+.dossier-card .dc-sector{background:var(--blue-l);color:var(--blue);font-size:10px;font-weight:600;padding:2px 8px;border-radius:10px}
+.dossier-card .dc-date{font-size:10px;color:var(--gray-m)}
+.dc-delete{position:absolute;top:12px;right:12px;background:none;border:none;color:var(--gray-m);cursor:pointer;font-size:16px;line-height:1;padding:2px 4px;border-radius:4px}
+.dc-delete:hover{background:var(--red-l);color:var(--red-m)}
+.dc-open-btn{background:var(--blue-l);color:var(--blue);border:none;border-radius:5px;padding:5px 13px;font-size:11px;font-weight:600;cursor:pointer}
+.dc-open-btn:hover{background:var(--blue);color:#fff}
+.dh-empty{text-align:center;padding:60px 20px;color:var(--gray-m)}
+.dh-empty .de-icon{font-size:48px;margin-bottom:14px;opacity:.4}
+.dh-empty p{font-size:13px;margin-bottom:18px}
+.back-btn{background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.3);color:#fff;padding:6px 14px;border-radius:6px;font-size:12px;font-weight:500;cursor:pointer;display:inline-flex;align-items:center;gap:6px}
+.back-btn:hover{background:rgba(255,255,255,.25)}
 </style>
 </head>
 <body>
+
+<!-- ══ DOSSIER HOME ══════════════════════════════════════════ -->
+<div id="dossierHome">
+  <div class="dh-hdr">
+    <div>
+      <h1>Revue Analytique CAC</h1>
+      <p>Gestion des dossiers clients — Revue analytique préliminaire &amp; Plan de mission</p>
+    </div>
+    <button class="btn-new" onclick="newDossier()">＋ Nouveau dossier</button>
+  </div>
+  <div class="dh-body">
+    <div class="dh-toolbar">
+      <h2 id="dh-count">Mes dossiers</h2>
+      <div style="display:flex;gap:8px;align-items:center">
+        <input id="dh-search" placeholder="Rechercher…" oninput="renderDossierGrid()" style="border:1px solid var(--border);border-radius:6px;padding:6px 11px;font-size:12px;width:180px;outline:none">
+      </div>
+    </div>
+    <div class="dossiers-grid" id="dossiersGrid"></div>
+  </div>
+</div>
+
+<!-- ══ MAIN APP ══════════════════════════════════════════════ -->
+<div id="appMain">
 <div class="hdr">
-  <div><h1>Revue Analytique Préliminaire & Plan de Mission — CAC</h1><p>Import FEC · Bilan / CR / SIG · Seuils de signification</p></div>
-  <div style="display:flex;gap:7px;flex-wrap:wrap">
+  <div style="display:flex;align-items:center;gap:14px">
+    <button class="back-btn" onclick="returnToHome()" title="Retour à la liste des dossiers">← Dossiers</button>
+    <div><h1>Revue Analytique Préliminaire & Plan de Mission — CAC</h1><p>Import FEC · Bilan / CR / SIG · Seuils de signification</p></div>
+  </div>
+  <div style="display:flex;gap:7px;flex-wrap:wrap;align-items:center">
     <span class="badge" id="badgeEntite">Entité : —</span>
     <span class="badge" id="badgeEx">Exercice N : —</span>
+    <button class="back-btn" onclick="saveDossierAndReturn()" title="Sauvegarder et retourner">💾 Sauvegarder</button>
   </div>
 </div>
 
@@ -608,6 +667,7 @@ RDV Eric Gonfrier 15/05/2025 : Conciliation à la demande du CRCA et BPSO. 5,2 M
     <div class="ai-loading" id="aiL4"><div class="ai-dot"></div><div class="ai-dot"></div><div class="ai-dot"></div></div>
     <div class="ai-response" id="aiT4" style="display:none"></div></div>
 </div>
+</div><!-- /#appMain -->
 
 <script>
 // ── STATE (var uniquement) ──────────────────────────────────
@@ -1151,6 +1211,8 @@ function generateAnalysis(){
   buildEtatsFinanciers();buildSeuils();buildSynthese();buildBilan();buildCR();buildRatios();buildRisques();
   setTimeout(function(){genAI('all');},400);
   showTab('etats');
+  // Auto-save dossier state after analysis generation
+  setTimeout(function(){ saveDossierState(); },800);
 }
 
 // ── ÉTATS FINANCIERS ───────────────────────────────────────
@@ -1949,6 +2011,252 @@ function exportRevueWord(){
   document.body.appendChild(a);a.click();
   setTimeout(function(){document.body.removeChild(a);URL.revokeObjectURL(url);},100);
 }
+
+function updateBadges(){
+  var entite=(document.getElementById('nomEntite')||{}).value||'—';
+  var exN=(document.getElementById('exerciceN')||{}).value||'—';
+  var be=document.getElementById('badgeEntite');
+  var bx=document.getElementById('badgeEx');
+  if(be) be.textContent='Entité : '+entite;
+  if(bx) bx.textContent='N : '+exN;
+}
+function renderAll(){
+  if(!D) return;
+  buildEtatsFinanciers();buildSeuils();buildSynthese();buildBilan();buildCR();buildRatios();buildRisques();
+}
+
+// ── DOSSIER MANAGEMENT ─────────────────────────────────────
+var STORAGE_KEY = 'cac_dossiers_v1';
+var currentDossierId = null;
+
+function getDossiers(){
+  try{ return JSON.parse(localStorage.getItem(STORAGE_KEY)||'[]'); }catch(e){ return []; }
+}
+function saveDossiers(arr){
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(arr));
+}
+function generateId(){
+  return 'dos_'+Date.now()+'_'+Math.random().toString(36).slice(2,7);
+}
+
+function newDossier(){
+  var id = generateId();
+  var dossiers = getDossiers();
+  var dossier = {
+    id: id,
+    name: '',
+    exercice: '',
+    secteur: '',
+    associe: '',
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    kpis: null,
+    state: null
+  };
+  dossiers.push(dossier);
+  saveDossiers(dossiers);
+  openDossier(id);
+}
+
+function openDossier(id){
+  var dossiers = getDossiers();
+  var dossier = dossiers.find(function(d){ return d.id===id; });
+  if(!dossier) return;
+  currentDossierId = id;
+
+  // Reset app state
+  fecData = {n2:null, n1:null, n:null};
+  balanceData = {n2:null, n1:null, n:null};
+  compteLabels = {};
+  planComptable = {};
+  D = null;
+  seuilsData = [];
+  // Clear file inputs
+  ['fec-n2','fec-n1','fec-n','bal-n2','bal-n1','bal-n'].forEach(function(id){
+    var el = document.getElementById(id);
+    if(el) el.value='';
+  });
+  ['n2','n1','n'].forEach(function(yr){
+    var card=document.getElementById('card-'+yr);
+    if(card){ card.className='fec-card'; var rem=card.querySelector('.fec-remove'); if(rem) rem.remove(); }
+    var st=document.getElementById('status-'+yr);
+    if(st) st.textContent='Cliquer pour charger';
+    var bcard=document.getElementById('bcard-'+yr);
+    if(bcard){ bcard.className='fec-card'; var brem=bcard.querySelector('.fec-remove'); if(brem) brem.remove(); }
+    var bst=document.getElementById('bstatus-'+yr);
+    if(bst) bst.textContent='Cliquer pour charger';
+  });
+  document.getElementById('parseLog').style.display='none';
+  document.getElementById('parseLog').innerHTML='';
+  document.getElementById('btnGenerate').disabled=true;
+  // Disable tabs
+  ['pdm','etats','seuils','synthese','bilan','cr','ratios','risques','ia'].forEach(function(t){
+    var el=document.getElementById('tab-'+t);
+    if(el) el.classList.add('disabled');
+  });
+
+  // Restore fields
+  var ni=document.getElementById('nomEntite');
+  var ei=document.getElementById('exerciceN');
+  var si=document.getElementById('secteur');
+  var ai=document.getElementById('associe');
+  if(ni) ni.value = dossier.name||'';
+  if(ei) ei.value = dossier.exercice||'';
+  if(si && dossier.secteur){
+    var found=false;
+    for(var i=0;i<si.options.length;i++){ if(si.options[i].value===dossier.secteur||si.options[i].text===dossier.secteur){ si.selectedIndex=i; found=true; break; } }
+    if(!found){ si.value='autres'; toggleAutre(si); var sa=document.getElementById('secteurAutre'); if(sa) sa.value=dossier.secteur; }
+  }
+  if(ai) ai.value = dossier.associe||'';
+
+  // Restore computed state if available
+  if(dossier.state && dossier.state.D){
+    D = dossier.state.D;
+    // Re-render all tabs that have data
+    try{
+      renderAll();
+      ['pdm','etats','seuils','synthese','bilan','cr','ratios','risques','ia'].forEach(function(t){
+        var el=document.getElementById('tab-'+t); if(el) el.classList.remove('disabled');
+      });
+      document.getElementById('btnGenerate').disabled=false;
+    }catch(e){ D=null; }
+  }
+
+  // Update badges
+  updateBadges();
+
+  // Show main app
+  document.getElementById('dossierHome').style.display='none';
+  document.getElementById('appMain').style.display='block';
+  showTab('import');
+}
+
+function saveDossierState(){
+  if(!currentDossierId) return;
+  var dossiers = getDossiers();
+  var idx = dossiers.findIndex(function(d){ return d.id===currentDossierId; });
+  if(idx<0) return;
+
+  var ni=document.getElementById('nomEntite');
+  var ei=document.getElementById('exerciceN');
+  var si=document.getElementById('secteur');
+  var sa=document.getElementById('secteurAutre');
+  var ai=document.getElementById('associe');
+
+  var secteurVal = si ? (si.value==='autres' ? (sa?sa.value:'')||'Autres' : si.options[si.selectedIndex]?si.options[si.selectedIndex].text:'') : '';
+
+  dossiers[idx].name = ni?ni.value.trim():'';
+  dossiers[idx].exercice = ei?ei.value.trim():'';
+  dossiers[idx].secteur = secteurVal;
+  dossiers[idx].associe = ai?ai.value.trim():'';
+  dossiers[idx].updatedAt = new Date().toISOString();
+
+  if(D){
+    // Save computed KPIs for card display
+    dossiers[idx].kpis = {
+      ca: D.n&&D.n.ca ? D.n.ca : null,
+      totalActif: D.n&&D.n.totalActif ? D.n.totalActif : null,
+      rn: D.n&&D.n.rnExercice !== undefined ? D.n.rnExercice : null
+    };
+    // Save full D state (can be large — only serialize key fields)
+    try{
+      dossiers[idx].state = { D: D };
+    }catch(e){ dossiers[idx].state=null; }
+  }
+
+  saveDossiers(dossiers);
+}
+
+function saveDossierAndReturn(){
+  saveDossierState();
+  returnToHome();
+}
+
+function returnToHome(){
+  saveDossierState();
+  currentDossierId = null;
+  document.getElementById('appMain').style.display='none';
+  document.getElementById('dossierHome').style.display='flex';
+  renderDossierGrid();
+}
+
+function deleteDossier(id, evt){
+  if(evt){ evt.stopPropagation(); }
+  var dossiers = getDossiers();
+  var dossier = dossiers.find(function(d){ return d.id===id; });
+  var name = dossier ? (dossier.name||'ce dossier') : 'ce dossier';
+  if(!confirm('Supprimer le dossier "'+name+'" ? Cette action est irréversible.')) return;
+  saveDossiers(dossiers.filter(function(d){ return d.id!==id; }));
+  renderDossierGrid();
+}
+
+function fmt(n){
+  if(n===null||n===undefined) return '—';
+  if(Math.abs(n)>=1e6) return (n/1e6).toFixed(1).replace('.',',')+' M€';
+  if(Math.abs(n)>=1e3) return Math.round(n/1e3).toLocaleString('fr-FR')+' k€';
+  return Math.round(n).toLocaleString('fr-FR')+' €';
+}
+
+function renderDossierGrid(){
+  var dossiers = getDossiers();
+  var q = (document.getElementById('dh-search')||{value:''}).value.trim().toLowerCase();
+  if(q) dossiers = dossiers.filter(function(d){
+    return (d.name||'').toLowerCase().includes(q)||(d.exercice||'').toLowerCase().includes(q)||(d.secteur||'').toLowerCase().includes(q);
+  });
+  // Sort newest first
+  dossiers = dossiers.slice().sort(function(a,b){ return (b.updatedAt||'').localeCompare(a.updatedAt||''); });
+
+  var countEl = document.getElementById('dh-count');
+  if(countEl) countEl.textContent = 'Mes dossiers (' + dossiers.length + ')';
+
+  var grid = document.getElementById('dossiersGrid');
+  if(!grid) return;
+
+  if(dossiers.length===0){
+    grid.innerHTML='<div class="dh-empty" style="grid-column:1/-1"><div class="de-icon">📁</div><p>Aucun dossier trouvé.<br>Créez votre premier dossier pour commencer.</p><button class="btn-new" onclick="newDossier()">＋ Nouveau dossier</button></div>';
+    return;
+  }
+
+  grid.innerHTML = dossiers.map(function(d){
+    var kpis = d.kpis||{};
+    var name = d.name || '<span style="color:var(--gray-m);font-style:italic">Sans nom</span>';
+    var ex = d.exercice ? 'Exercice N : '+d.exercice : '<span style="color:var(--gray-m)">Exercice non renseigné</span>';
+    var sector = d.secteur || 'Non précisé';
+    var dateStr = d.updatedAt ? 'Modifié le '+new Date(d.updatedAt).toLocaleDateString('fr-FR') : '';
+    var hasKpis = kpis.ca!=null||kpis.totalActif!=null||kpis.rn!=null;
+    var kpiHtml = hasKpis
+      ? '<div class="dc-kpis">'
+        +(kpis.ca!=null?'<div class="dc-kpi"><div class="dk-label">CA</div><div class="dk-val">'+fmt(kpis.ca)+'</div></div>':'')
+        +(kpis.totalActif!=null?'<div class="dc-kpi"><div class="dk-label">Total Actif</div><div class="dk-val">'+fmt(kpis.totalActif)+'</div></div>':'')
+        +(kpis.rn!=null?'<div class="dc-kpi"><div class="dk-label">Résultat N</div><div class="dk-val" style="color:'+(kpis.rn>=0?'var(--green-m)':'var(--red-m)')+'">'+fmt(kpis.rn)+'</div></div>':'')
+        +'</div>'
+      : '<div style="font-size:11px;color:var(--gray-m);padding:6px 0 10px">Aucune analyse générée</div>';
+    return '<div class="dossier-card" onclick="openDossier(\''+d.id+'\')">'
+      +'<button class="dc-delete" onclick="deleteDossier(\''+d.id+'\',event)" title="Supprimer">×</button>'
+      +'<div class="dc-name">'+name+'</div>'
+      +'<div class="dc-ex">'+ex+'</div>'
+      +kpiHtml
+      +'<div class="dc-footer">'
+        +'<span class="dc-sector">'+sector+'</span>'
+        +'<div style="display:flex;align-items:center;gap:8px"><span class="dc-date">'+dateStr+'</span><button class="dc-open-btn" onclick="openDossier(\''+d.id+'\');event.stopPropagation()">Ouvrir →</button></div>'
+      +'</div>'
+      +'</div>';
+  }).join('');
+}
+
+// Auto-save when user edits fields in app
+function setupAutoSave(){
+  ['nomEntite','exerciceN','secteur','associe'].forEach(function(id){
+    var el=document.getElementById(id);
+    if(el) el.addEventListener('change',function(){ saveDossierState(); updateBadges(); });
+  });
+}
+
+// Init: show dossier home on load
+window.addEventListener('DOMContentLoaded', function(){
+  renderDossierGrid();
+  setupAutoSave();
+});
 </script>
 </body>
 </html>
