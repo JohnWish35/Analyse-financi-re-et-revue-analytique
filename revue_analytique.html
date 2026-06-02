@@ -733,12 +733,30 @@ function destroyChart(id){if(charts[id]){charts[id].destroy();delete charts[id];
 
 // ── FEC PARSER ─────────────────────────────────────────────
 function detectSep(line){if(line.indexOf('|')>=0) return '|';if(line.indexOf('\t')>=0) return '\t';return ';';}
+// Parsing robuste des montants FEC :
+// Gère les formats FR (1 234 567,89), US (1,234,567.89), simple (1234567.89 ou 1234567,89)
+function parseMontant(s){
+  if(!s) return 0;
+  s = s.trim().replace(/\s/g,'').replace(/"/g,'');
+  if(!s||s==='-'||s==='—') return 0;
+  var lastComma = s.lastIndexOf(',');
+  var lastDot   = s.lastIndexOf('.');
+  if(lastComma > lastDot){
+    // Virgule = séparateur décimal (format FR) → supprimer les points milliers
+    s = s.replace(/\./g,'').replace(',','.');
+  } else if(lastDot > lastComma){
+    // Point = séparateur décimal → supprimer les virgules milliers
+    s = s.replace(/,/g,'');
+  }
+  return parseFloat(s)||0;
+}
+
 function parseFEC(text){
   var lines=text.split(/\r?\n/).filter(function(l){return l.trim();});
   if(!lines.length) return null;
   var sep=detectSep(lines[0]);
   var headers=lines[0].split(sep).map(function(h){return h.trim().toLowerCase().replace(/"/g,'');});
-  plog('Séparateur: "'+(sep==='|'?'pipe':sep==='\t'?'tab':sep)+'" — '+headers.length+' colonnes','ok');
+  plog('Séparateur: "'+(sep==='|'?'pipe':sep==='\t'?'tab':sep)+'" — colonnes: '+headers.join(' | '),'ok');
   var hi={};
   var aliases={
     compte:['comptenum','compte_num','numcompte','accountnum','compte'],
@@ -754,8 +772,14 @@ function parseFEC(text){
     for(var i=0;i<arr.length;i++){var p=headers.indexOf(arr[i]);if(p>=0){idx=p;break;}}
     if(idx>=0) hi[k]=idx;
   });
-  if(hi.compte===undefined){plog('Colonne compte introuvable','err');return null;}
+  if(hi.compte===undefined){plog('Colonne compte introuvable — en-têtes: '+headers.join('|'),'err');return null;}
+  plog('Colonnes détectées → compte:'+hi.compte+(hi.lib!==undefined?', lib:'+hi.lib:'')
+    +(hi.debit!==undefined?', débit:'+hi.debit:'')+(hi.credit!==undefined?', crédit:'+hi.credit:'')
+    +(hi.montant!==undefined?', montant:'+hi.montant+', sens:'+hi.sens:''),'ok');
+
   var soldes={};var rows=0;
+  // Échantillon pour détecter le format numérique réel (1ère ligne de données)
+  var sampleDebStr='',sampleCredStr='';
   for(var i=1;i<lines.length;i++){
     var cols=lines[i].split(sep).map(function(c){return c.trim().replace(/"/g,'');});
     if(cols.length<3) continue;
@@ -763,10 +787,11 @@ function parseFEC(text){
     if(!cpt||!/^\d/.test(cpt)) continue;
     var deb=0,cred=0;
     if(hi.debit!==undefined&&hi.credit!==undefined){
-      deb=parseFloat((cols[hi.debit]||'0').replace(',','.'))||0;
-      cred=parseFloat((cols[hi.credit]||'0').replace(',','.'))||0;
+      if(!sampleDebStr&&cols[hi.debit]) sampleDebStr=cols[hi.debit];
+      deb =parseMontant(cols[hi.debit]);
+      cred=parseMontant(cols[hi.credit]);
     } else if(hi.montant!==undefined&&hi.sens!==undefined){
-      var m=parseFloat((cols[hi.montant]||'0').replace(',','.'))||0;
+      var m=parseMontant(cols[hi.montant]);
       var sv=(cols[hi.sens]||'').toUpperCase();
       if(sv==='D'||sv==='1') deb=m; else cred=m;
     }
@@ -777,7 +802,21 @@ function parseFEC(text){
       if(lb) compteLabels[cpt]=lb;
     }
   }
-  plog(rows+' lignes — '+Object.keys(soldes).length+' comptes','ok');
+  // Totaux de contrôle
+  var totD=0,totC=0;
+  Object.keys(soldes).forEach(function(k){totD+=soldes[k].d;totC+=soldes[k].c;});
+  var ecartFEC=Math.abs(totD-totC);
+  var sampleInfo=sampleDebStr?' — ex. brut: "'+sampleDebStr+'" → parsé: '+parseMontant(sampleDebStr):'';
+  plog(rows+' lignes — '+Object.keys(soldes).length+' comptes'+sampleInfo,'ok');
+  plog('Σ Débit FEC = '+fmtK(totD)+' | Σ Crédit FEC = '+fmtK(totC)
+    +' | Écart = '+fmtK(ecartFEC)+(ecartFEC<1000?' ✓ équilibré':' ⚠ FEC non soldé'),
+    ecartFEC<Math.max(1000,totD*0.001)?'ok':'warn');
+  // Résumé des principaux agrégats pour diagnostic immédiat
+  function sumCls(c){var d=0;Object.keys(soldes).forEach(function(k){if(k[0]===c){d+=soldes[k].d-soldes[k].c;}});return d;}
+  plog('Soldes nets par classe → '
+    +'1:'+fmtK(sumCls('1'))+' 2:'+fmtK(sumCls('2'))+' 3:'+fmtK(sumCls('3'))
+    +' 4:'+fmtK(sumCls('4'))+' 5:'+fmtK(sumCls('5'))
+    +' 6:'+fmtK(sumCls('6'))+' 7:'+fmtK(sumCls('7')),'ok');
   return soldes;
 }
 function soldeRaw(soldes,prefixes){
@@ -873,7 +912,7 @@ function parseBalance(text){
   }
   plog('Balance: col_cpt='+hi_cpt+(hi_lib>=0?', lib='+hi_lib:'')+(hi_sd>=0?', soldeDeb='+hi_sd:'')+(hi_sc>=0?', soldeCred='+hi_sc:'')+(hi_solde>=0?', solde net='+hi_solde:''),'ok');
 
-  function parseNum(s){return parseFloat((s||'0').replace(/\s/g,'').replace(',','.').replace(/[^\d.-]/g,''))||0;}
+  function parseNum(s){return parseMontant(s);}
   var soldes={};var rows=0;
   for(var i=1;i<lines.length;i++){
     var cols=lines[i].split(sep).map(function(c){return c.trim().replace(/"/g,'').replace(/\r/g,'');});
