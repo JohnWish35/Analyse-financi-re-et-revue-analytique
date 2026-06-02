@@ -1079,45 +1079,73 @@ function buildFinancials(soldes){
   var totalPassif=capitauxPropres+provisions+dettesFin+dettesExp;
 
   // ── COMPTE DE RÉSULTAT (classes 6 & 7) ──
-  var ventesMarch=cred(['707']);
-  var ventesProduits=cred(['701','702','703','704','705','706','708']);
-  var CA_HT=ventesMarch+ventesProduits;
-  var varStocksProd=credS(['713','711','712']);
-  var prodImmo=cred(['72']);
-  var subvExpl=cred(['74']);
-  var autresProdGest=cred(['75']);
-  var reprises=cred(['781','791']);
-  // Achats & charges externes
-  var achatsMarch=raw(['607']).d;
-  var varStocksMarch=raw(['6037']).d-cred(['6037']);
-  var achatsMatPrem=raw(['601','602']).d;
-  var varStocksMat=raw(['603']).d-cred(['603']);        // variation stocks matières (6031,6032,6037 exclus)
-  var autresAchats=raw(['604','605','606','608']).d;    // achats non stockés, fournitures
-  var chargesExternes=raw(['61','62']).d;               // services extérieurs
-  var rrrObtenus=cred(['609','619','629']);
-  // Coût total d'exploitation (achats + charges ext)
+  // Vérité comptable : résultat net = Σ produits (classe 7, net créditeur) − Σ charges (classe 6, net débiteur).
+  // Identique au résultat du bilan quand le FEC est équilibré.
+  var totalProduits=0,totalCharges=0;
+  Object.keys(soldes).forEach(function(cpt){
+    var v=soldes[cpt];
+    if(cpt[0]==='7') totalProduits+=(v.c-v.d);
+    else if(cpt[0]==='6') totalCharges+=(v.d-v.c);
+  });
+  var RN_calc=totalProduits-totalCharges;
+
+  // ── Détail produits d'exploitation (signés, sans écrêtage) ──
+  var ventesMarch=credS(['707']);
+  var ventesProduits=credS(['701','702','703','704','705','706','708']);
+  var rrrAccordes=raw(['709']).debiteur;                 // RRR accordés (débit classe 70) → réduit le CA
+  var CA_HT=ventesMarch+ventesProduits-rrrAccordes;
+  var varStocksProd=credS(['71']);                       // production stockée (toute la classe 71)
+  var prodImmo=credS(['72']);
+  var subvExpl=credS(['74']);
+  var autresProdGest=credS(['75']);
+  var reprisesExpl=credS(['781']);
+  var transfChargesExpl=credS(['791']);
+  var reprises=reprisesExpl+transfChargesExpl;
+  // ── Détail charges d'exploitation (signées) ──
+  var achatsMarch=raw(['607']).debiteur;
+  var varStocksMarch=raw(['6037']).debiteur;
+  var achatsMatPrem=raw(['601','602']).debiteur;
+  var varStocksMat=raw(['603']).debiteur-raw(['6037']).debiteur; // 603 hors 6037 (évite double comptage)
+  var autresAchats=raw(['604','605','606','608']).debiteur;      // achats non stockés, fournitures
+  var rrrObtenus=raw(['609','619','629']).crediteur;             // RRR obtenus (réduisent les achats/services)
+  var chargesExternes=raw(['61','62']).debiteur;                 // services extérieurs
   var coutAchats=achatsMarch+varStocksMarch+achatsMatPrem+varStocksMat+autresAchats+chargesExternes-rrrObtenus;
-  var impotsTaxes=raw(['63']).d;
-  var chargesPerso=raw(['64']).d-cred(['649']);
-  var dotAmort=raw(['681']).d;   // 681 = exploitation ; 687 est EXCEPTIONNEL (ne pas inclure ici)
-  var autresChargesGest=raw(['65']).d;
+  var impotsTaxes=raw(['63']).debiteur;
+  var chargesPerso=raw(['64']).debiteur-credS(['649']);
+  var dotAmort=raw(['681']).debiteur;   // 681 = exploitation ; 686 financier ; 687 exceptionnel
+  var autresChargesGest=raw(['65']).debiteur;
+
+  // ── Financier ──
+  var prodFinanciers=credS(['76','786','796']);
+  var chargesFinancieres=raw(['66','686']).debiteur;
+  var resultatFin=prodFinanciers-chargesFinancieres;
+  // ── Exceptionnel ──
+  var prodExcep=credS(['77','787','797']);
+  var chargesExcep=raw(['67','687']).debiteur;
+  var resultatExcep=prodExcep-chargesExcep;
+  // ── Participation & IS ──
+  var participation=raw(['691']).debiteur;
+  var IS=raw(['695','696','697','698','699']).debiteur;
+
+  // ── Réconciliation : résidu = comptes 6/7 non rattachés à une rubrique ci-dessus ──
+  // (garantit que la cascade du CR « tombe » exactement sur RN_calc)
+  var prodExplBuckets=CA_HT+varStocksProd+prodImmo+subvExpl+autresProdGest+reprises;
+  var chargesExplBuckets=coutAchats+impotsTaxes+chargesPerso+dotAmort+autresChargesGest;
+  var cascadeRN=(prodExplBuckets-chargesExplBuckets)+resultatFin+resultatExcep-participation-IS;
+  var residu=RN_calc-cascadeRN;
+  if(Math.abs(residu)>=0.5){
+    // On rattache le résidu aux « autres produits/charges de gestion » d'exploitation
+    if(residu>0) autresProdGest+=residu; else autresChargesGest+=-residu;
+  }
+
+  // ── Agrégats d'exploitation (après réconciliation) ──
+  var prodExpl=CA_HT+varStocksProd+prodImmo+subvExpl+autresProdGest+reprises;
   var totalChargesExpl=coutAchats+impotsTaxes+chargesPerso+dotAmort+autresChargesGest;
-  var prodExpl=CA_HT+varStocksProd+prodImmo+subvExpl+reprises+autresProdGest;
   var VA=CA_HT+varStocksProd+prodImmo-coutAchats;
   var EBE=VA+subvExpl-impotsTaxes-chargesPerso;
-  var REX=EBE+autresProdGest+reprises-autresChargesGest-dotAmort;
-  var prodFinanciers=cred(['76','786','796']);
-  var chargesFinancieres=raw(['66','686']).d;
-  var resultatFin=prodFinanciers-chargesFinancieres;
+  var REX=prodExpl-totalChargesExpl;
   var resultatCourant=REX+resultatFin;
-  var prodExcep=cred(['77','787','797']);
-  var chargesExcep=raw(['67','687']).d;   // 687 = dotations exceptionnelles (ici uniquement)
-  var resultatExcep=prodExcep-chargesExcep;
-  var participation=raw(['691']).d;
-  var IS=raw(['695','696','697','698','699']).d-cred(['699']);
-  // RN calculé depuis le compte de résultat (P&L réel)
-  var RN_calc=resultatCourant+resultatExcep-participation-IS;
-  // RN bilan = figure d'équilibre (peut différer si écart de reconstitution FEC)
+  // RN bilan = figure d'équilibre du bilan (= RN_calc quand le FEC est équilibré)
   var RN=rnCP;
 
   var margeCom=(ventesMarch-achatsMarch-varStocksMarch);
@@ -1129,7 +1157,11 @@ function buildFinancials(soldes){
 
   // Log bilan
   plog('Bilan → Actif='+fmtK(totalActif)+' | Passif='+fmtK(totalPassif)+' | Écart='+fmtK(Math.round(totalActif-totalPassif)),'ok');
-  plog('RN CR (classes 6/7) = '+fmtK(RN_calc)+(Math.abs(rnExercice)>100?' | Cpte 12 = '+fmtK(rnExercice):''),'ok');
+  plog('Résultat → CR (Σ cl.7−cl.6)='+fmtK(RN_calc)+' | Bilan (équilibre)='+fmtK(rnCP)
+    +' | Écart CR/Bilan='+fmtK(Math.round(RN_calc-rnCP))
+    +(Math.abs(residu)>=0.5?' | Résidu regroupement absorbé='+fmtK(residu):'')
+    +(Math.abs(rnExercice)>100?' | Cpte 12='+fmtK(rnExercice):''),
+    Math.abs(RN_calc-rnCP)<Math.max(1000,Math.abs(totalActif)*0.005)?'ok':'warn');
 
   return {
     immoIncNettes:immoIncNettes,immoCorpNettes:immoCorpNettes,immoFinNettes:immoFinNettes,
@@ -1141,7 +1173,7 @@ function buildFinancials(soldes){
     provisions:provisions,dettesFin:dettesFin,avancesClients:avancesClients,dettesExp:dettesExp,dettesFournisseurs:dettesFournisseurs,
     dettesPersonnel:dettesPersonnel,dettesSociales:dettesSociales,dettesFiscales:dettesFiscales,
     autresDettes:autresDettes,totalPassif:totalPassif,
-    CA:CA_HT,ventesMarch:ventesMarch,ventesProduits:ventesProduits,varStocksProd:varStocksProd,
+    CA:CA_HT,ventesMarch:ventesMarch,ventesProduits:ventesProduits,rrrAccordes:rrrAccordes,varStocksProd:varStocksProd,
     prodImmo:prodImmo,subvExpl:subvExpl,autresProdGest:autresProdGest,reprises:reprises,
     margeCom:margeCom,prodExercice:prodExercice,prodExpl:prodExpl,totalChargesExpl:totalChargesExpl,
     coutAchats:coutAchats,achatsMarch:achatsMarch,achatsMatPrem:achatsMatPrem,
@@ -1395,8 +1427,10 @@ function buildEtatsFinanciers(){
   cr+=efRow(0,'PRODUITS D\'EXPLOITATION',Fn.prodExpl,n1?n1.prodExpl:null,'r-section',null,null);
   cr+=efRow(1,'Ventes de marchandises',Fn.ventesMarch,n1?n1.ventesMarch:null,'r-detail',CA,['707']);
   cr+=efRow(1,'Production vendue biens & services',Fn.ventesProduits,n1?n1.ventesProduits:null,'r-detail',CA,['701','702','703','704','705','706','708']);
+  if(Fn.rrrAccordes||(n1&&n1.rrrAccordes))
+    cr+=efRow(1,'RRR accordés sur ventes',Fn.rrrAccordes?-Fn.rrrAccordes:0,n1&&n1.rrrAccordes?-n1.rrrAccordes:0,'r-detail',CA,['709']);
   cr+=efRow(1,'Chiffre d\'affaires net',Fn.CA,n1?n1.CA:null,'r-sous-total',CA,null);
-  cr+=efRow(1,'Production stockée (variation)',Fn.varStocksProd,n1?n1.varStocksProd:null,'r-detail',CA,['711','712','713']);
+  cr+=efRow(1,'Production stockée (variation)',Fn.varStocksProd,n1?n1.varStocksProd:null,'r-detail',CA,['71']);
   cr+=efRow(1,'Production immobilisée',Fn.prodImmo,n1?n1.prodImmo:null,'r-detail',CA,['72']);
   cr+=efRow(1,'Subventions d\'exploitation',Fn.subvExpl,n1?n1.subvExpl:null,'r-detail',CA,['74']);
   cr+=efRow(1,'Reprises & transferts de charges',Fn.reprises,n1?n1.reprises:null,'r-detail',CA,['781','791']);
@@ -1441,7 +1475,7 @@ function buildSIGTable(Fn,n1,CA){
   s+=efRow(0,'Variation stock marchandises',Fn.varStocksMarch,n1?n1.varStocksMarch:null,'r-detail',CA,['6037']);
   s+=efRow(0,'MARGE COMMERCIALE',Fn.margeCom,n1?n1.margeCom:null,'r-sig',CA,null);
   s+=efRow(0,'Production vendue',Fn.ventesProduits,n1?n1.ventesProduits:null,'r-detail',CA,['701','702','703','704','705','706','708']);
-  s+=efRow(0,'Production stockée',Fn.varStocksProd,n1?n1.varStocksProd:null,'r-detail',CA,['713','711','712']);
+  s+=efRow(0,'Production stockée',Fn.varStocksProd,n1?n1.varStocksProd:null,'r-detail',CA,['71']);
   s+=efRow(0,'Production immobilisée',Fn.prodImmo,n1?n1.prodImmo:null,'r-detail',CA,['72']);
   s+=efRow(0,'PRODUCTION DE L\'EXERCICE',Fn.prodExercice,n1?n1.prodExercice:null,'r-sig',CA,null);
   s+=efRow(0,'Achats mat. prem. & var. stocks',-(Fn.achatsMatPrem+Fn.varStocksMat),n1?-(n1.achatsMatPrem+n1.varStocksMat):null,'r-detail',CA,['601','602','603']);
@@ -1453,7 +1487,7 @@ function buildSIGTable(Fn,n1,CA){
   s+=efRow(0,'EBE',Fn.EBE,n1?n1.EBE:null,'r-sig',CA,null);
   s+=efRow(0,'Reprises & transferts',Fn.reprises,n1?n1.reprises:null,'r-detail',CA,['781','791']);
   s+=efRow(0,'Autres produits de gestion',Fn.autresProdGest,n1?n1.autresProdGest:null,'r-detail',CA,['75']);
-  s+=efRow(0,'Dotations amort. & provisions',-(Fn.dotAmort),n1?-n1.dotAmort:null,'r-detail',CA,['681','687']);
+  s+=efRow(0,'Dotations amort. & provisions',-(Fn.dotAmort),n1?-n1.dotAmort:null,'r-detail',CA,['681']);
   s+=efRow(0,'Autres charges de gestion',-(Fn.autresChargesGest),n1?-n1.autresChargesGest:null,'r-detail',CA,['65']);
   s+=efRow(0,'RÉSULTAT D\'EXPLOITATION',Fn.REX,n1?n1.REX:null,'r-sig',CA,null);
   s+=efRow(0,'Résultat financier',Fn.resultatFin,n1?n1.resultatFin:null,'r-detail',CA,['76','786','796','66','686']);
